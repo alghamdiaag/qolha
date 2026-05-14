@@ -7,23 +7,26 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <main class="app-shell">
-    <header class="hero">
-      <p class="brand-label">قلها</p>
-      <h1>اكتب طلبك بطريقتك</h1>
-      <p class="subheadline">ونرتّبه لك ليصبح جاهزًا للنسخ إلى أي تطبيق ذكاء اصطناعي.</p>
-    </header>
+  <main class="page-shell">
+    <section class="hero" aria-label="قلها">
+      <p class="brand">قلها</p>
+      <h1>رتّب فكرتك للذكاء الاصطناعي</h1>
+      <p class="lede">اكتب بطريقتك… وسنحوّلها إلى طلب أوضح وأذكى.</p>
+    </section>
 
-    <section class="card input-card" aria-label="إدخال الطلب">
+    <section class="app-card" aria-label="تجهيز الطلب">
       <form id="processForm">
         <label for="transcript">طلبك</label>
-        <textarea id="transcript" placeholder="مثال: أبغى أبدأ مشروع تقني يخدم الناس، لكن ما أعرف من وين أبدأ..." required></textarea>
-        <p class="field-hint">اكتب كما تتكلم عادة. لا تحتاج صياغة مثالية.</p>
-        <button type="submit" id="submitButton">جهّز الطلب</button>
+        <textarea id="transcript" placeholder="مثال: أبغى أبدأ مشروع تقني لكن ما أعرف من وين أبدأ…" required></textarea>
+        <p class="field-note">اكتب كما تتكلم عادة.</p>
+        <button type="submit" id="submitButton">
+          <span class="button-spinner" aria-hidden="true"></span>
+          <span class="button-text">جهّز الطلب</span>
+        </button>
       </form>
     </section>
 
-    <section id="result" class="card result-card" aria-live="polite" hidden></section>
+    <section id="result" class="result-card" aria-live="polite" hidden></section>
   </main>
 
   <script src="app.js"></script>

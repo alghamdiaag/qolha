@@ -1,18 +1,22 @@
 :root {
   color-scheme: light;
-  --bg: #f7f5f1;
+  --bg: #f5f4f0;
   --surface: #ffffff;
-  --text: #171a1c;
-  --muted: #66706d;
-  --border: #e4e0d8;
-  --primary: #0f5c52;
-  --primary-dark: #0a433c;
-  --focus: #dcebe7;
-  --shadow: 0 18px 50px rgba(30, 36, 34, 0.08);
+  --text: #151817;
+  --muted: #6c7470;
+  --border: #e7e2d8;
+  --primary: #0e5a50;
+  --primary-dark: #0a4039;
+  --focus: #dbeae5;
+  --shadow: 0 24px 80px rgba(27, 34, 31, 0.09);
 }
 
 * {
   box-sizing: border-box;
+}
+
+html {
+  min-height: 100%;
 }
 
 body {
@@ -20,27 +24,31 @@ body {
   min-width: 320px;
   min-height: 100vh;
   background:
-    radial-gradient(circle at top, rgba(15, 92, 82, 0.06), transparent 34rem),
+    radial-gradient(circle at 50% 0%, rgba(14, 90, 80, 0.08), transparent 34rem),
     var(--bg);
   color: var(--text);
   font-family: "Segoe UI", Tahoma, Arial, sans-serif;
-  font-size: 18px;
-  line-height: 1.7;
+  font-size: 17px;
+  line-height: 1.65;
   overflow-x: hidden;
 }
 
-.app-shell {
+.page-shell {
   width: min(100% - 28px, 760px);
+  min-height: 100vh;
   margin: 0 auto;
-  padding: 42px 0 56px;
+  padding: 34px 0 44px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .hero {
-  margin: 0 auto 26px;
+  margin: 0 auto 24px;
   text-align: center;
 }
 
-.brand-label {
+.brand {
   margin: 0 0 12px;
   color: var(--primary);
   font-size: 1rem;
@@ -55,73 +63,85 @@ p {
 
 h1 {
   margin-bottom: 12px;
-  font-size: clamp(2.1rem, 7vw, 3.7rem);
-  line-height: 1.15;
+  font-size: clamp(2.25rem, 7vw, 4.25rem);
+  font-weight: 800;
+  line-height: 1.08;
   letter-spacing: 0;
 }
 
-.subheadline {
-  width: min(100%, 560px);
+.lede {
+  width: min(100%, 520px);
   margin: 0 auto;
   color: var(--muted);
-  font-size: 1.08rem;
+  font-size: clamp(1.02rem, 2.6vw, 1.2rem);
 }
 
-.card {
-  background: var(--surface);
+.app-card,
+.result-card {
+  background: rgba(255, 255, 255, 0.94);
   border: 1px solid var(--border);
-  border-radius: 20px;
+  border-radius: 24px;
   box-shadow: var(--shadow);
 }
 
-.input-card,
-.result-card {
+.app-card {
   padding: 22px;
 }
 
-.input-card {
-  margin-bottom: 18px;
+.result-card {
+  margin-top: 18px;
+  padding: 22px;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.result-card.is-visible {
+  opacity: 1;
+  transform: translateY(0);
 }
 
 label {
   display: block;
   margin-bottom: 10px;
-  color: var(--text);
-  font-size: 1.05rem;
   font-weight: 800;
+  font-size: 1.02rem;
 }
 
 textarea {
   display: block;
   width: 100%;
-  min-height: 220px;
+  min-height: 180px;
+  max-height: 360px;
   resize: vertical;
   padding: 17px 18px;
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: 18px;
   background: #fffefd;
   color: var(--text);
   font: inherit;
   font-size: 18px;
   line-height: 1.75;
+  transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
 }
 
 textarea::placeholder {
-  color: #8a918e;
+  color: #8c928f;
 }
 
 textarea:focus {
-  outline: 4px solid var(--focus);
-  border-color: var(--primary);
+  outline: 0;
+  border-color: rgba(14, 90, 80, 0.55);
+  box-shadow: 0 0 0 4px var(--focus);
+  background: #ffffff;
 }
 
-.field-hint,
-.muted,
-.status-text {
+.field-note,
+.muted {
   color: var(--muted);
 }
 
-.field-hint {
+.field-note {
   margin: 10px 2px 16px;
   font-size: 0.98rem;
 }
@@ -132,24 +152,46 @@ button {
   min-height: 56px;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   border: 0;
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 12px 18px;
   background: var(--primary);
   color: #ffffff;
   font: inherit;
-  font-size: 1.05rem;
+  font-size: 1.04rem;
   font-weight: 800;
   cursor: pointer;
+  transition: background 160ms ease, transform 160ms ease, opacity 160ms ease;
 }
 
 button:hover {
   background: var(--primary-dark);
+  transform: translateY(-1px);
+}
+
+button:active {
+  transform: translateY(0);
 }
 
 button:disabled {
-  opacity: 0.72;
+  opacity: 0.78;
   cursor: wait;
+  transform: none;
+}
+
+.button-spinner {
+  display: none;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.45);
+  border-top-color: #ffffff;
+  border-radius: 50%;
+  animation: spin 800ms linear infinite;
+}
+
+button.is-loading .button-spinner {
+  display: inline-block;
 }
 
 .result-card h2 {
@@ -163,10 +205,8 @@ button:disabled {
 }
 
 .prompt-output {
-  min-height: 300px;
-  max-height: 70vh;
-  margin-top: 0;
-  overflow: auto;
+  min-height: 260px;
+  max-height: 58vh;
   background: #ffffff;
   direction: ltr;
   text-align: left;
@@ -176,54 +216,79 @@ button:disabled {
   margin-top: 14px;
 }
 
-.success-message {
-  margin: 14px 0 0;
-  padding: 12px 14px;
-  border-radius: 14px;
-  background: #edf5f2;
-  color: var(--primary-dark);
-  font-weight: 800;
+.message-card {
   text-align: center;
 }
 
-@media (min-width: 720px) {
-  .app-shell {
-    padding-top: 68px;
+.message-card .message-text {
+  margin-bottom: 0;
+  color: var(--primary-dark);
+  font-weight: 800;
+}
+
+.toast {
+  position: fixed;
+  right: 50%;
+  bottom: 22px;
+  z-index: 10;
+  transform: translate(50%, 10px);
+  opacity: 0;
+  padding: 11px 16px;
+  border-radius: 999px;
+  background: #13231f;
+  color: #ffffff;
+  font-weight: 800;
+  box-shadow: 0 14px 40px rgba(19, 35, 31, 0.18);
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(50%, 0);
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (min-width: 760px) {
+  .page-shell {
+    padding-top: 52px;
+    padding-bottom: 56px;
   }
 
-  .input-card,
+  .app-card,
   .result-card {
     padding: 30px;
   }
 }
 
-@media (max-width: 420px) {
-  body {
-    font-size: 17px;
-  }
-
-  .app-shell {
-    width: min(100% - 20px, 760px);
-    padding: 28px 0 40px;
+@media (max-width: 520px) {
+  .page-shell {
+    width: min(100% - 22px, 760px);
+    min-height: auto;
+    padding: 30px 0 38px;
+    justify-content: flex-start;
   }
 
   .hero {
-    margin-bottom: 22px;
+    margin-bottom: 20px;
   }
 
-  .input-card,
+  .app-card,
   .result-card {
     padding: 18px;
-    border-radius: 18px;
+    border-radius: 22px;
   }
 
   textarea {
-    min-height: 220px;
+    min-height: 170px;
     padding: 15px;
-    font-size: 18px;
   }
 
   .prompt-output {
-    min-height: 300px;
+    min-height: 240px;
   }
 }

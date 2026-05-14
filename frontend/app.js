@@ -1,22 +1,28 @@
 const form = document.getElementById('processForm');
 const textarea = document.getElementById('transcript');
 const button = document.getElementById('submitButton');
+const buttonText = button.querySelector('.button-text');
 const result = document.getElementById('result');
 
 let promptTextarea = null;
+
+textarea.addEventListener('input', () => {
+  textarea.style.height = 'auto';
+  textarea.style.height = `${Math.min(textarea.scrollHeight, 360)}px`;
+});
 
 form.addEventListener('submit', async (event) => {
   event.preventDefault();
 
   const transcript = textarea.value.trim();
   if (!transcript) {
-    showStatus('اكتب طلبك أولًا');
+    showMessage('اكتب طلبك أولًا');
     textarea.focus();
     return;
   }
 
   setLoading(true);
-  showStatus('جاري التجهيز...');
+  clearResult();
 
   try {
     const response = await fetch('/api/process', {
@@ -25,15 +31,23 @@ form.addEventListener('submit', async (event) => {
       body: JSON.stringify({ transcript })
     });
 
-    const data = await response.json();
+    let data = {};
+    try {
+      data = await response.json();
+    } catch (error) {
+      throw new Error('تعذر الاتصال');
+    }
 
     if (!response.ok) {
-      throw new Error(data.error || 'حدثت مشكلة أثناء تجهيز الطلب. حاول مرة أخرى بعد قليل.');
+      throw new Error(data.error || 'حدثت مشكلة أثناء تجهيز الطلب');
     }
 
     renderResult(data);
   } catch (error) {
-    showStatus(error.message || 'تعذر تجهيز الطلب الآن. تأكد من الاتصال وحاول مرة أخرى.');
+    showError(
+      'تعذر الاتصال',
+      'تأكد من اتصال الإنترنت أو حاول مرة أخرى بعد قليل.'
+    );
   } finally {
     setLoading(false);
   }
@@ -41,24 +55,47 @@ form.addEventListener('submit', async (event) => {
 
 function setLoading(isLoading) {
   button.disabled = isLoading;
-  button.textContent = isLoading ? 'جاري التجهيز...' : 'جهّز الطلب';
+  button.classList.toggle('is-loading', isLoading);
+  buttonText.textContent = isLoading ? 'جاري تجهيز الطلب...' : 'جهّز الطلب';
 }
 
-function showStatus(message) {
+function clearResult() {
+  promptTextarea = null;
+  result.hidden = true;
+  result.replaceChildren();
+}
+
+function showMessage(message) {
   result.hidden = false;
   promptTextarea = null;
-  result.replaceChildren(createElement('p', 'status-text', message));
+  result.className = 'result-card message-card is-visible';
+  result.replaceChildren(createElement('p', 'message-text', message));
+  result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function showError(title, message) {
+  result.hidden = false;
+  promptTextarea = null;
+  result.className = 'result-card message-card is-visible';
+  result.replaceChildren(
+    createElement('h2', null, title),
+    createElement('p', 'muted', message)
+  );
+  result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function renderResult(data) {
   result.hidden = false;
+  result.className = 'result-card is-visible';
   promptTextarea = null;
 
   if (data.status === 'NEED_MORE_DETAILS') {
+    result.classList.add('message-card');
     result.replaceChildren(
-      createElement('h2', null, 'أضف تفاصيل أكثر'),
+      createElement('h2', null, 'أضف تفاصيل أكثر عن طلبك'),
       createElement('p', 'muted', 'اكتب الموضوع وما الذي تريد الوصول إليه.')
     );
+    result.scrollIntoView({ behavior: 'smooth', block: 'start' });
     return;
   }
 
@@ -76,14 +113,12 @@ function renderResult(data) {
 
   result.replaceChildren(
     createElement('h2', null, 'الطلب الجاهز'),
-    createElement(
-      'p',
-      'muted',
-      'انسخه والصقه في التطبيق الذي تفضله.'
-    ),
+    createElement('p', 'muted', 'انسخه واستخدمه في أي تطبيق ذكاء اصطناعي.'),
     promptTextarea,
     copyButton
   );
+
+  result.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 async function copyPrompt() {
@@ -97,15 +132,20 @@ async function copyPrompt() {
     document.execCommand('copy');
   }
 
-  const success = createElement(
-    'p',
-    'success-message',
-    'تم النسخ'
-  );
+  showToast('تم النسخ');
+}
 
-  const existingMessage = result.querySelector('.success-message');
-  if (existingMessage) existingMessage.remove();
-  result.append(success);
+function showToast(message) {
+  const existing = document.querySelector('.toast');
+  if (existing) existing.remove();
+
+  const toast = createElement('div', 'toast', message);
+  document.body.append(toast);
+  requestAnimationFrame(() => toast.classList.add('show'));
+  window.setTimeout(() => {
+    toast.classList.remove('show');
+    window.setTimeout(() => toast.remove(), 180);
+  }, 1800);
 }
 
 function createElement(tag, className, text) {
