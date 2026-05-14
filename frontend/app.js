@@ -10,13 +10,13 @@ form.addEventListener('submit', async (event) => {
 
   const transcript = textarea.value.trim();
   if (!transcript) {
-    showStatus('اكتب طلبك أولًا، حتى نقدر نرتبه لك.');
+    showStatus('اكتب طلبك أولًا');
     textarea.focus();
     return;
   }
 
   setLoading(true);
-  showStatus('جاري تجهيز الطلب...');
+  showStatus('جاري التجهيز...');
 
   try {
     const response = await fetch('/api/process', {
@@ -41,7 +41,7 @@ form.addEventListener('submit', async (event) => {
 
 function setLoading(isLoading) {
   button.disabled = isLoading;
-  button.textContent = isLoading ? 'جاري تجهيز الطلب...' : 'جهّز طلبي';
+  button.textContent = isLoading ? 'جاري التجهيز...' : 'جهّز الطلب';
 }
 
 function showStatus(message) {
@@ -56,13 +56,8 @@ function renderResult(data) {
 
   if (data.status === 'NEED_MORE_DETAILS') {
     result.replaceChildren(
-      createElement('h2', null, 'نحتاج تفاصيل أكثر قليلًا'),
-      createElement(
-        'p',
-        null,
-        'اكتب لنا معلومات أكثر عن الموضوع حتى نقدر نرتب طلبك بشكل أفضل.'
-      ),
-      createElement('p', 'muted', 'حاول توضح: ما الموضوع؟ ماذا تريد؟ ولمن النتيجة؟')
+      createElement('h2', null, 'أضف تفاصيل أكثر'),
+      createElement('p', 'muted', 'اكتب الموضوع وما الذي تريد الوصول إليه.')
     );
     return;
   }
@@ -80,11 +75,11 @@ function renderResult(data) {
   copyButton.addEventListener('click', copyPrompt);
 
   result.replaceChildren(
-    createElement('h2', null, 'هذا هو الطلب الجاهز 👇'),
+    createElement('h2', null, 'الطلب الجاهز'),
     createElement(
       'p',
       'muted',
-      'انسخه والصقه في ChatGPT أو Claude أو Gemini أو أي تطبيق ذكاء اصطناعي تستخدمه.'
+      'انسخه والصقه في التطبيق الذي تفضله.'
     ),
     promptTextarea,
     copyButton
@@ -105,7 +100,7 @@ async function copyPrompt() {
   const success = createElement(
     'p',
     'success-message',
-    'تم نسخ الطلب ✅\nالآن افتح ChatGPT أو أي تطبيق ذكاء اصطناعي والصق الطلب.'
+    'تم النسخ'
   );
 
   const existingMessage = result.querySelector('.success-message');

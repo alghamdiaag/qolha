@@ -8,50 +8,22 @@
 </head>
 <body>
   <main class="app-shell">
-    <header class="app-header">
-      <p class="brand-kicker">رتّب كلامك ليصبح أوضح للذكاء الاصطناعي</p>
-      <h1>قلها</h1>
-      <p class="subtitle">اكتب طلبك بطريقتك… والتطبيق يرتّبه لك لتنسخه إلى ChatGPT أو أي تطبيق ذكاء اصطناعي.</p>
-      <p class="reassurance">لا تحتاج تعرف كيف تكتب prompts. فقط اشرح طلبك بشكل طبيعي.</p>
+    <header class="hero">
+      <p class="brand-label">قلها</p>
+      <h1>اكتب طلبك بطريقتك</h1>
+      <p class="subheadline">ونرتّبه لك ليصبح جاهزًا للنسخ إلى أي تطبيق ذكاء اصطناعي.</p>
     </header>
 
-    <section class="steps" aria-label="طريقة الاستخدام">
-      <div class="step">
-        <span class="step-number">1</span>
-        <p>اكتب طلبك بطريقتك</p>
-      </div>
-      <div class="step">
-        <span class="step-number">2</span>
-        <p>اضغط «جهّز طلبي»</p>
-      </div>
-      <div class="step">
-        <span class="step-number">3</span>
-        <p>انسخ الطلب والصقه في تطبيق الذكاء الاصطناعي المفضل لديك</p>
-      </div>
-    </section>
-
-    <section class="input-panel" aria-label="إدخال الطلب">
-      <p class="helper">اكتب كأنك تشرح لصديق ذكي، لكنه ما يعرف التفاصيل.</p>
-
-      <div class="examples" aria-label="أمثلة">
-        <p>أمثلة:</p>
-        <ul>
-          <li>أبغى أكتب رسالة اعتذار محترمة</li>
-          <li>ساعدني أختار بين خيارين</li>
-          <li>اشرح لي التمويل العقاري ببساطة</li>
-          <li>أبغى أبدأ مشروع لكن محتار من وين أبدأ</li>
-        </ul>
-      </div>
-
+    <section class="card input-card" aria-label="إدخال الطلب">
       <form id="processForm">
-        <label for="transcript">اكتب طلبك هنا</label>
-        <textarea id="transcript" placeholder="مثال: أبغى أبدأ مشروع تقني يخدم الناس، لكن ما أعرف من وين أبدأ أو كيف أحدد الفكرة المناسبة..." required></textarea>
-        <button type="submit" id="submitButton">جهّز طلبي</button>
-        <p class="button-helper">سنرتب طلبك ليكون أوضح وأسهل للفهم داخل تطبيقات الذكاء الاصطناعي.</p>
+        <label for="transcript">طلبك</label>
+        <textarea id="transcript" placeholder="مثال: أبغى أبدأ مشروع تقني يخدم الناس، لكن ما أعرف من وين أبدأ..." required></textarea>
+        <p class="field-hint">اكتب كما تتكلم عادة. لا تحتاج صياغة مثالية.</p>
+        <button type="submit" id="submitButton">جهّز الطلب</button>
       </form>
     </section>
 
-    <section id="result" class="result-panel" aria-live="polite" hidden></section>
+    <section id="result" class="card result-card" aria-live="polite" hidden></section>
   </main>
 
   <script src="app.js"></script>
