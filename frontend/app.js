@@ -31,17 +31,13 @@ form.addEventListener('submit', async (event) => {
       body: JSON.stringify({ transcript })
     });
 
-    let data = {};
-    try {
-      data = await response.json();
-    } catch (error) {
-      throw new Error('تعذر الاتصال');
-    }
-
     if (!response.ok) {
+      let data = {};
+      try { data = await response.json(); } catch (_) {}
       throw new Error(data.error || 'حدثت مشكلة أثناء تجهيز الطلب');
     }
 
+    const data = await response.json();
     renderResult(data);
   } catch (error) {
     showError(
