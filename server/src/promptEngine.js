@@ -194,7 +194,15 @@ function buildInterpretationPrompt(transcript, route = { path: 'DEEP_PATH' }) {
 
 function buildFastInterpretationPrompt(transcript, route) {
   return `You interpret Arabic user requests for "قلها".
-Return compact valid JSON only. Arabic descriptive fields, English enum values.
+
+CRITICAL OUTPUT RULES:
+- Return ONLY a valid JSON object. Nothing before { and nothing after }.
+- No markdown. No code fences. No explanation. No preamble.
+- No trailing commas. No JavaScript comments (// or /* */).
+- Arabic text only inside JSON string values. Enum values in English only.
+- The response must be directly parseable by JSON.parse().
+
+Return compact valid JSON. Arabic descriptive fields, English enum values.
 Do not generate the final prompt. Do not add deep analysis.
 
 Pre-classification:
@@ -286,8 +294,12 @@ Classification guidance:
 - Asking about business strategy, market, growth, positioning, high-level plans => strategic_analysis, strategic_thinking, strategic_basic.
 - Very vague inputs like "ساعدني في الموضوع" with no actual topic => NEED_MORE_DETAILS.
 
-Return only valid JSON. No markdown. No extra text.
-All descriptive natural-language values must be in Arabic. Use English only for enum values such as task_type, cognitive_need, reasoning_strategy, output_template_id, reasoning_mode, depth, status, confidence, and complexity.
+CRITICAL OUTPUT RULES:
+- Return ONLY a valid JSON object. Nothing before { and nothing after }.
+- No markdown. No code fences. No explanation. No preamble.
+- No trailing commas. No JavaScript comments (// or /* */).
+- The response must be directly parseable by JSON.parse().
+- All descriptive text values must be in Arabic. Enum values (status, task_type, cognitive_need, reasoning_strategy, output_template_id, reasoning_mode, depth, complexity) in English only.
 
 Schema:
 {
@@ -364,7 +376,8 @@ Check:
 - Will the answer likely be useful in Arabic?
 - Does it reduce uncertainty?
 
-Return only valid JSON:
+CRITICAL: Return ONLY this JSON object. No markdown. No code fences. No text before or after.
+No trailing commas. No comments. Start with { and end with }.
 {
   "final_prompt": ""
 }
@@ -378,6 +391,38 @@ ${formatTemplate(selectedTemplateId)}
 
 Current final prompt:
 ${finalPrompt}`;
+}
+
+function buildRepairPrompt(rawText) {
+  return `The following text was supposed to be a valid JSON object but failed to parse. Fix it.
+
+Return ONLY the corrected JSON object. No markdown. No code fences. No explanation.
+Start with { and end with }. No trailing commas. No comments.
+Preserve all field names and values exactly. Only fix JSON syntax errors.
+
+Input to repair:
+${rawText.substring(0, 3000)}`;
+}
+
+function buildInterpretationFallback(transcript) {
+  return normalizeInterpretation(
+    {
+      status: 'SUFFICIENT',
+      confidence: 0.65,
+      complexity: 'medium',
+      normalized_expression: transcript,
+      topic: 'طلب عام',
+      explicit_goal: transcript,
+      implicit_goal: 'الحصول على مساعدة عملية',
+      underlying_progress: 'تحويل الطلب إلى صياغة أوضح للذكاء الاصطناعي',
+      task_type: 'general_help',
+      cognitive_need: 'practical_guidance',
+      reasoning_strategy: ['practical_guidance'],
+      output_template_id: 'general_basic',
+      missing_information: []
+    },
+    { path: 'FAST_PATH' }
+  );
 }
 
 function ensureHumanAwareSection(prompt, interpretation) {
@@ -483,14 +528,44 @@ function ensureInternalGuidanceSections(prompt, interpretation) {
 }
 
 function extractJson(text) {
-  const jsonStart = text.indexOf('{');
-  const jsonEnd = text.lastIndexOf('}');
+  // Strip markdown code fences: ```json ... ``` or ``` ... ```
+  const stripped = text
+    .replace(/^[ \t]*```(?:json|JSON)?[ \t]*\r?\n?/m, '')
+    .replace(/\r?\n?[ \t]*```[ \t]*$/m, '')
+    .trim();
 
-  if (jsonStart === -1 || jsonEnd === -1 || jsonEnd <= jsonStart) {
+  const start = stripped.indexOf('{');
+  if (start === -1) {
     throw new Error('LLM response did not contain a JSON object');
   }
 
-  return JSON.parse(text.substring(jsonStart, jsonEnd + 1));
+  // Walk forward counting brace depth, skipping characters inside strings
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+
+  for (let i = start; i < stripped.length; i++) {
+    const ch = stripped[i];
+    if (escaped) { escaped = false; continue; }
+    if (ch === '\\' && inString) { escaped = true; continue; }
+    if (ch === '"') { inString = !inString; continue; }
+    if (inString) continue;
+    if (ch === '{') depth++;
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0) {
+        return JSON.parse(stripped.substring(start, i + 1));
+      }
+    }
+  }
+
+  // Balanced walk could not close — fall back to last }
+  const end = stripped.lastIndexOf('}');
+  if (end > start) {
+    return JSON.parse(stripped.substring(start, end + 1));
+  }
+
+  throw new Error('LLM response did not contain a JSON object');
 }
 
 function parseInterpretation(text, route = {}) {
@@ -1061,6 +1136,8 @@ module.exports = {
   preclassifyTranscript,
   buildInterpretationPrompt,
   buildReflectionPrompt,
+  buildRepairPrompt,
+  buildInterpretationFallback,
   parseInterpretation,
   parseReflection,
   selectTemplateId,

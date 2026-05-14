@@ -38,18 +38,39 @@ async function callAnthropic(prompt, options = {}) {
     apiKey: requireEnv('ANTHROPIC_API_KEY', 'Anthropic')
   });
 
-  const response = await client.messages.create({
+  const messages = [{ role: 'user', content: prompt }];
+
+  // Prefill forces the model to start inside a JSON object, preventing preamble or markdown
+  if (options.jsonMode) {
+    messages.push({ role: 'assistant', content: '{' });
+  }
+
+  const requestParams = {
     model: options.model || process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
     max_tokens: options.maxTokens || 1800,
     temperature: 0.2,
-    messages: [{ role: 'user', content: prompt }]
-  });
+    messages
+  };
 
-  return response.content
+  if (options.jsonMode) {
+    requestParams.system =
+      'You are a JSON output engine. Return only a valid JSON object. No markdown. No code fences. No explanation text.';
+  }
+
+  const response = await client.messages.create(requestParams);
+
+  let text = response.content
     .filter((block) => block.type === 'text')
     .map((block) => block.text)
     .join('')
     .trim();
+
+  // Restore the prefilled '{' — Anthropic returns only the continuation after it
+  if (options.jsonMode) {
+    text = '{' + text;
+  }
+
+  return text;
 }
 
 async function callGemini(prompt, options = {}) {
@@ -105,6 +126,7 @@ async function callProvider(prompt, modelRoute) {
 
 async function callLLM(prompt, route = {}) {
   const modelRoute = selectModelRoute(route);
+  if (route.jsonMode) modelRoute.jsonMode = true;
 
   try {
     const text = await callProvider(prompt, modelRoute);
@@ -121,7 +143,8 @@ async function callLLM(prompt, route = {}) {
       const fallbackRoute = {
         provider: 'anthropic',
         model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
-        maxTokens: route.purpose === 'reflection' ? 900 : route.path === 'FAST_PATH' ? 1200 : 1800
+        maxTokens: route.purpose === 'reflection' ? 900 : route.path === 'FAST_PATH' ? 1200 : 1800,
+        jsonMode: route.jsonMode
       };
       const text = await callProvider(prompt, fallbackRoute);
       return {
