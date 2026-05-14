@@ -149,8 +149,8 @@ function preclassifyTranscript(transcript) {
   const isMessage = /رسالة|واتساب|ايميل|إيميل|رد|اعتذار|اكتب|صياغة|مديري|عميل/.test(normalized);
   const isSimpleExplanation = /اشرح|فسر|يعني ايش|ما معنى|ببساطة|بطريقة بسيطة/.test(normalized);
   const isDecision = /وش الأفضل|الأفضل|افضل|أختار|اختار|أقرر|اقرر|ولا|أو|مقارنة|قارن/.test(normalized);
-  const isBroadProject = /مشروع|ستارتب|startup|تقني|فكرة|بزنس|شركة/.test(normalized) &&
-    /من وين|أبدأ|ابدا|محتار|يخدم الناس|فرصة|استراتيجية|سوق|نمو|عملاء/.test(normalized);
+  const isBroadProject = /ستارتب|startup|تقني|تطبيق|برنامج|يخدم الناس/.test(normalized) &&
+    /من وين|أبدأ|ابدا|محتار|فرصة|استراتيجية|سوق|نمو|عملاء/.test(normalized);
   const isStrategic = /استراتيجية|نمو|سوق|منافس|تموضع|مشروع|بزنس|شركة|استثمار/.test(normalized) &&
     /حلل|خطة|فرصة|مخاطر|قرار|محتار|ما أعرف|من وين/.test(normalized);
 
@@ -256,6 +256,7 @@ If the user provides enough direction to produce a useful first response, return
 Preserve uncertainty, emotional context, and obstacles when relevant.
 Do not invent facts, dates, names, reasons, budgets, or constraints.
 Avoid generic interpretation.
+Semantic grounding: All jtbd fields must describe the user's actual domain. If the topic is a food business, personal letter, consumer purchase, or any non-technical subject, describe it in those exact terms. Do not apply tech startup framing to non-tech requests.
 
 Human state interpretation:
 - Infer the practical human situation behind the request.
@@ -633,45 +634,59 @@ function normalizeJtbd(value, raw = {}) {
   const decisionUncertainty = ['low', 'medium', 'high'].includes(source.decision_uncertainty)
     ? source.decision_uncertainty
     : inferDecisionUncertainty(raw);
-  const broadProjectIdea = isBroadProjectIdea(raw);
+  const broadTechIdea = isBroadProjectIdea(raw);
 
-  return {
+  // LLM-provided values take priority; hardcoded tech defaults are fallbacks only
+  const jtbd = {
     job_executor:
-      broadProjectIdea
-        ? 'شخص يريد بناء مشروع تقني مفيد لكنه لا يعرف نقطة البداية'
-        :
-      source.job_executor || raw.audience || 'شخص يحاول الوصول إلى نتيجة عملية واضحة',
+      source.job_executor ||
+      (broadTechIdea ? 'شخص يريد بناء مشروع تقني مفيد لكنه لا يعرف نقطة البداية' : null) ||
+      raw.audience ||
+      'شخص يحاول الوصول إلى نتيجة عملية واضحة',
     struggling_moment:
-      broadProjectIdea
-        ? 'لديه رغبة عامة في بناء شيء يخدم الناس لكن الفكرة ما زالت واسعة وغير محددة'
-        :
       source.struggling_moment ||
+      (broadTechIdea ? 'لديه رغبة عامة في بناء شيء يخدم الناس لكن الفكرة ما زالت واسعة وغير محددة' : null) ||
       raw.underlying_progress ||
       'لديه طلب عام ويحتاج تحويله إلى خطوة عملية واضحة',
     desired_progress:
-      broadProjectIdea
-        ? 'الانتقال من الحماس العام إلى فرصة محددة قابلة للاختبار'
-        :
       source.desired_progress ||
+      (broadTechIdea ? 'الانتقال من الحماس العام إلى فرصة محددة قابلة للاختبار' : null) ||
       raw.underlying_progress ||
       raw.implicit_goal ||
       raw.explicit_goal ||
       'الانتقال من طلب عام إلى نتيجة قابلة للتنفيذ',
     functional_need:
-      broadProjectIdea
-        ? 'تحديد فئة مستهدفة ومشكلة واضحة وخطوة تحقق أولى'
-        :
       source.functional_need ||
+      (broadTechIdea ? 'تحديد فئة مستهدفة ومشكلة واضحة وخطوة تحقق أولى' : null) ||
       raw.desired_output ||
       'إرشاد عملي واضح يساعده على التقدم',
     emotional_need:
-      broadProjectIdea
-        ? 'تقليل الضياع وزيادة الثقة في أول خطوة'
-        :
       source.emotional_need ||
+      (broadTechIdea ? 'تقليل الضياع وزيادة الثقة في أول خطوة' : null) ||
       raw.emotional_state ||
       'تقليل الحيرة وزيادة الثقة في الخطوة التالية',
-    decision_uncertainty: broadProjectIdea ? 'high' : decisionUncertainty
+    decision_uncertainty: broadTechIdea && !source.decision_uncertainty ? 'high' : decisionUncertainty
+  };
+
+  return groundJtbdToTopic(jtbd, raw);
+}
+
+function groundJtbdToTopic(jtbd, raw) {
+  const topicText = [raw.topic, raw.normalized_expression].filter(Boolean).join(' ');
+  if (/تقني|تطبيق|برنامج|ستارتب|startup/.test(topicText)) return jtbd;
+
+  const techPattern = /تقني|تطبيق|برنامج|ستارتب|startup/;
+  return {
+    ...jtbd,
+    job_executor: techPattern.test(jtbd.job_executor)
+      ? raw.audience || 'شخص يريد الوصول إلى نتيجة عملية واضحة'
+      : jtbd.job_executor,
+    struggling_moment: techPattern.test(jtbd.struggling_moment)
+      ? raw.underlying_progress || 'لديه طلب محدد يحتاج تحويله إلى خطوة عملية'
+      : jtbd.struggling_moment,
+    functional_need: techPattern.test(jtbd.functional_need)
+      ? raw.desired_output || 'إرشاد عملي واضح'
+      : jtbd.functional_need
   };
 }
 
@@ -809,8 +824,12 @@ function isBroadProjectIdea(raw) {
     .filter(Boolean)
     .join(' ');
 
-  return /مشروع|فكرة|تقني|يخدم الناس|ستارتب|startup|ابني/.test(text) &&
-    /واسعة|غير محددة|ما أعرف|من وين|أبدأ|استكشاف|فرصة|يخدم الناس/.test(text);
+  // Requires explicit tech/digital signals — "مشروع" alone is not sufficient
+  const hasTechSignal = /تقني|تطبيق|برنامج|ستارتب|startup|software|app|يخدم الناس/.test(text);
+  // Requires genuine directional vagueness — not just "starting" something concrete
+  const hasVagueness = /واسعة|غير محددة|ما أعرف|من وين|استكشاف/.test(text);
+
+  return hasTechSignal && hasVagueness;
 }
 
 function normalizeReasoningStrategy(value, taskType, cognitiveNeed) {
