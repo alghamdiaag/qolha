@@ -486,6 +486,61 @@ button.is-loading .button-spinner {
   }
 }
 
+/* ─── Understanding card ─────────────────────────────────────────────────── */
+
+.understanding-label {
+  margin: 0 0 12px;
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--primary);
+}
+
+.summary-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 20px;
+}
+
+.summary-row {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  padding: 10px 14px;
+  background: var(--focus);
+  border-radius: 12px;
+}
+
+.summary-key {
+  flex-shrink: 0;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: var(--primary);
+}
+
+.summary-val {
+  font-size: 0.97rem;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+/* ─── Thinking status ────────────────────────────────────────────────────── */
+
+.thinking-text {
+  margin: 0;
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-size: 1.05rem;
+  animation: thinking-pulse 1.8s ease infinite;
+}
+
+@keyframes thinking-pulse {
+  0%   { opacity: 0.3; }
+  20%  { opacity: 1; }
+  80%  { opacity: 1; }
+  100% { opacity: 0.3; }
+}
+
 /* ─── Review step polish ─────────────────────────────────────────────────── */
 
 #reviewTranscript {

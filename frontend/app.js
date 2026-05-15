@@ -7,6 +7,13 @@ let voiceSupported = false;
 let recognitionActive = false;
 let finalTranscript = '';
 let promptTextarea = null;
+let thinkingTimer = null;
+let thinkingIndex = 0;
+const THINKING_MESSAGES = [
+  'نرتب طلبك...',
+  'نحدد ما تحتاجه بالضبط...',
+  'نجهز صياغة أوضح للذكاء الاصطناعي...'
+];
 
 // ─── DOM refs ─────────────────────────────────────────────────────────────────
 
@@ -22,6 +29,10 @@ const typeToggle        = document.getElementById('typeToggle');
 const interimDisplay    = document.getElementById('interimDisplay');
 const voiceStatus       = document.getElementById('voiceStatus');
 const unsupportedNotice = document.getElementById('unsupportedNotice');
+
+const summaryTopic    = document.getElementById('summaryTopic');
+const summaryGoal     = document.getElementById('summaryGoal');
+const summaryHelpType = document.getElementById('summaryHelpType');
 
 const reviewTranscript  = document.getElementById('reviewTranscript');
 const generateButton    = document.getElementById('generateButton');
@@ -86,6 +97,10 @@ function initVoice() {
       showMessage('لم ألتقط كلامًا واضحًا. حاول مرة أخرى أو اكتب طلبك.');
       return;
     }
+    const summary = buildUnderstandingSummary(text);
+    summaryTopic.textContent    = summary.topic;
+    summaryGoal.textContent     = summary.goal;
+    summaryHelpType.textContent = summary.helpType;
     reviewTranscript.value = text;
     resizeTextarea(reviewTranscript);
     voiceStatus.textContent = 'انتهى التسجيل — راجع النص';
@@ -160,6 +175,7 @@ manualTranscript.addEventListener('input',  () => resizeTextarea(manualTranscrip
 
 async function processRequest(transcript, primaryBtn, secondaryBtn) {
   clearResult();
+  startThinking();
 
   primaryBtn.disabled = true;
   primaryBtn.classList.add('is-loading');
@@ -181,8 +197,10 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
     }
 
     const data = await response.json();
+    stopThinking();
     renderResult(data);
   } catch (_) {
+    stopThinking();
     showError('تعذر الاتصال', 'تأكد من اتصال الإنترنت أو حاول مرة أخرى بعد قليل.');
   } finally {
     primaryBtn.disabled = false;
@@ -296,6 +314,74 @@ function createElement(tag, className, text) {
   if (className) el.className = className;
   el.textContent = text;
   return el;
+}
+
+// ─── Understanding summary ────────────────────────────────────────────────────
+
+function buildUnderstandingSummary(transcript) {
+  const t = transcript;
+  const FALLBACK = {
+    topic:    'طلب عام',
+    goal:     'توضيح الطلب وتحويله إلى نتيجة قابلة للاستخدام',
+    helpType: 'صياغة طلب واضح للذكاء الاصطناعي'
+  };
+
+  if (/رسالة|اكتب.*رسالة|كتابة/.test(t)) {
+    if (/إجازة/.test(t))   return { topic: 'رسالة طلب إجازة', goal: 'طلب إجازة بطريقة مناسبة',    helpType: 'صياغة رسالة جاهزة' };
+    if (/شكوى/.test(t))    return { topic: 'رسالة شكوى',       goal: 'تقديم شكوى باحترافية',       helpType: 'صياغة رسالة جاهزة' };
+    if (/استقالة/.test(t)) return { topic: 'رسالة استقالة',    goal: 'تقديم الاستقالة باحترافية',  helpType: 'صياغة رسالة جاهزة' };
+    return                        { topic: 'رسالة',             goal: 'صياغة رسالة مناسبة',         helpType: 'صياغة رسالة جاهزة' };
+  }
+
+  if (/محتار|أختار|اختار|بين .+ و|مقارنة/.test(t)) {
+    if (/سيارة/.test(t))      return { topic: 'مقارنة سيارات',        goal: 'اتخاذ قرار شراء مناسب',   helpType: 'مقارنة عملية واضحة' };
+    if (/تخصص|جامعة/.test(t)) return { topic: 'مقارنة خيارات دراسية', goal: 'اختيار المسار المناسب',   helpType: 'مقارنة عملية واضحة' };
+    return                           { topic: 'مقارنة خيارات',         goal: 'اتخاذ القرار المناسب',    helpType: 'مقارنة عملية واضحة' };
+  }
+
+  if (/مشروع/.test(t)) {
+    let topic = 'مشروع';
+    if      (/قهوة/.test(t))             topic = 'مشروع قهوة';
+    else if (/سيارة|سيارات/.test(t))     topic = 'مشروع سيارات';
+    else if (/تقني|تطبيق|برنامج/.test(t)) topic = 'مشروع تقني';
+    else if (/مطعم/.test(t))             topic = 'مشروع مطعم';
+    else { const m = t.match(/مشروع\s+(\S+)/); if (m) topic = `مشروع ${m[1]}`; }
+    const goal = /ميزانية|ريال|دولار/.test(t) ? 'بدء مشروع بميزانية محددة' : 'اختيار مسار واضح للبدء';
+    return { topic, goal, helpType: 'خطة عملية واضحة' };
+  }
+
+  if (/نوم|نومي/.test(t))              return { topic: 'تنظيم النوم',      goal: 'تحسين الروتين اليومي',          helpType: 'خطة خطوات عملية' };
+  if (/رياضة/.test(t))                 return { topic: 'نظام رياضي',        goal: 'بناء عادة رياضية منتظمة',       helpType: 'خطة خطوات عملية' };
+  if (/وزن|غذاء/.test(t))              return { topic: 'نظام صحي',          goal: 'تحسين الصحة والتغذية',          helpType: 'خطة خطوات عملية' };
+  if (/سيرة ذاتية/.test(t))            return { topic: 'سيرة ذاتية',        goal: 'تحسين فرص القبول الوظيفي',      helpType: 'صياغة احترافية جاهزة' };
+  if (/مقابلة.*عمل/.test(t))           return { topic: 'تحضير مقابلة عمل', goal: 'النجاح في مقابلة العمل',         helpType: 'تحضير وصياغة احترافية' };
+  if (/تعلم|دراسة|كورس|دورة/.test(t)) return { topic: 'خطة تعلم',          goal: 'اكتساب مهارة جديدة',            helpType: 'خطة تعلم منظمة' };
+
+  return FALLBACK;
+}
+
+// ─── Thinking status ──────────────────────────────────────────────────────────
+
+function startThinking() {
+  thinkingIndex = 0;
+  result.hidden = false;
+  result.className = 'result-card message-card is-visible';
+
+  function tick() {
+    const msg = THINKING_MESSAGES[thinkingIndex % THINKING_MESSAGES.length];
+    result.replaceChildren(createElement('p', 'thinking-text', msg));
+    thinkingIndex++;
+    thinkingTimer = window.setTimeout(tick, 1800);
+  }
+  tick();
+  result.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function stopThinking() {
+  if (thinkingTimer) {
+    window.clearTimeout(thinkingTimer);
+    thinkingTimer = null;
+  }
 }
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
