@@ -2,19 +2,8 @@ require('dotenv').config();
 const path = require('path');
 const express = require('express');
 const helmet = require('helmet');
-const {
-  buildInterpretationPrompt,
-  buildReflectionPrompt,
-  buildRepairPrompt,
-  buildInterpretationFallback,
-  preclassifyTranscript,
-  parseInterpretation,
-  parseReflection,
-  assembleFinalPrompt,
-  shouldReflect,
-  toApiResponse
-} = require('./src/promptEngine');
-const { callLLM, getProvider } = require('./src/llm');
+const { generatePrompt } = require('./src/promptEngine');
+const { getProvider } = require('./src/llm');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -70,125 +59,14 @@ app.post('/api/process', async (req, res) => {
 
   let logData = {
     provider: getProvider(),
-    model: 'unknown',
-    orchestration_path: 'unknown',
-    task_type: 'unknown',
-    cognitive_need: 'unknown',
-    reasoning_strategy: [],
-    confidence: 0,
-    complexity: 'unknown',
-    output_template_id: 'unknown',
-    jtbd_job_executor: 'unknown',
-    jtbd_desired_progress: 'unknown',
-    reasoning_mode: 'unknown',
-    reasoning_depth: 'unknown',
-    reflection_used: false,
-    reflection_parse_failed: false,
-    repair_used: false,
-    fallback_used: false,
-    parse_error_message: null,
-    duration_ms: 0,
-    generation_duration_ms: 0
+    duration_ms: 0
   };
 
   try {
-    const route = preclassifyTranscript(transcript);
-    const generationStartedAt = Date.now();
-    const interpretationPrompt = buildInterpretationPrompt(transcript, route);
-    const interpretationResult = await callLLM(interpretationPrompt, { ...route, jsonMode: true });
-
-    if (process.env.NODE_ENV !== 'production') {
-      console.log('[api/process raw_interpretation]', interpretationResult.text.substring(0, 500));
-    }
-
-    let interpretation;
-    let repairUsed = false;
-    let fallbackUsed = false;
-    let parseErrorMessage = null;
-
-    try {
-      interpretation = parseInterpretation(interpretationResult.text, route);
-    } catch (parseErr) {
-      parseErrorMessage = parseErr.message;
-      try {
-        const repairPrompt = buildRepairPrompt(interpretationResult.text);
-        const repairResult = await callLLM(repairPrompt, {
-          path: 'FAST_PATH',
-          purpose: 'repair',
-          jsonMode: true
-        });
-        interpretation = parseInterpretation(repairResult.text, route);
-        repairUsed = true;
-      } catch (_repairErr) {
-        interpretation = buildInterpretationFallback(transcript);
-        fallbackUsed = true;
-      }
-    }
-
-    let finalPrompt = '';
-    let reflectionUsed = false;
-    let reflectionParseFailed = false;
-
-    if (interpretation.status === 'SUFFICIENT') {
-      finalPrompt = assembleFinalPrompt(interpretation, route);
-
-      if (route.path === 'DEEP_PATH' && shouldReflect(interpretation, finalPrompt)) {
-        try {
-          const reflectionPrompt = buildReflectionPrompt({
-            interpretation,
-            selectedTemplateId: interpretation.output_template_id,
-            finalPrompt
-          });
-          const reflectionResult = await callLLM(reflectionPrompt, {
-            ...route,
-            path: 'DEEP_PATH',
-            complexity: 'high',
-            purpose: 'reflection',
-            jsonMode: true
-          });
-
-          if (process.env.NODE_ENV !== 'production') {
-            console.log('[api/process raw_reflection]', reflectionResult.text.substring(0, 500));
-          }
-
-          const improvedPrompt = parseReflection(reflectionResult.text);
-          if (improvedPrompt) {
-            finalPrompt = improvedPrompt;
-            reflectionUsed = true;
-          }
-        } catch (_reflErr) {
-          reflectionParseFailed = true;
-          // finalPrompt stays as the originally assembled prompt
-        }
-      }
-    }
-
-    logData = {
-      provider: interpretationResult.provider,
-      model: interpretationResult.model,
-      orchestration_path: route.path,
-      needs_deep_reasoning: route.needs_deep_reasoning,
-      task_type: interpretation.task_type,
-      cognitive_need: interpretation.cognitive_need,
-      reasoning_strategy: interpretation.reasoning_strategy,
-      confidence: interpretation.confidence,
-      complexity: interpretation.complexity,
-      output_template_id: interpretation.output_template_id,
-      jtbd_job_executor: interpretation.jtbd?.job_executor,
-      jtbd_desired_progress: interpretation.jtbd?.desired_progress,
-      reasoning_mode: interpretation.reasoning_router?.reasoning_mode,
-      reasoning_depth: interpretation.reasoning_router?.depth,
-      reflection_used: reflectionUsed,
-      reflection_parse_failed: reflectionParseFailed,
-      repair_used: repairUsed,
-      fallback_used: fallbackUsed,
-      parse_error_message: parseErrorMessage,
-      duration_ms: Date.now() - startedAt,
-      generation_duration_ms: Date.now() - generationStartedAt
-    };
+    const result = await generatePrompt(transcript);
+    logData.status = result.status;
+    logData.duration_ms = Date.now() - startedAt;
     console.log('[api/process]', JSON.stringify(logData));
-
-    const result = toApiResponse(interpretation, finalPrompt, route);
     res.json(result);
   } catch (error) {
     logData.duration_ms = Date.now() - startedAt;

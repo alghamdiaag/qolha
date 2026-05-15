@@ -1,3 +1,141 @@
+const { callLLM } = require('./llm');
+
+// ─── PCTF System ──────────────────────────────────────────────────────────────
+
+async function step1_understand(transcript) {
+  const prompt = `أنت نظام ذكي متخصص في فهم ما يريده الناس فعلاً من وراء كلامهم.
+
+المستخدم تكلم بالعربية. مهمتك:
+
+1. PERSONA: ما هي الخبرة المتخصصة التي يحتاجها هذا الشخص؟
+   استنتجها من موضوع الطلب تلقائياً.
+   مثال: "خبير في ريادة الأعمال والمطاعم" أو "طبيب متخصص في التغذية"
+
+2. CONTEXT: ما وضع هذا الشخص؟ ماذا نعرف عنه من كلامه؟
+   اذكر فقط ما يمكن استنتاجه — لا تخترع معلومات.
+
+3. TASK: ما الذي يريد تحقيقه فعلاً؟
+   ليس ما قاله حرفياً — بل الهدف الحقيقي من وراء طلبه.
+
+4. FORMAT: كيف تبدو الإجابة المثالية لهذا الشخص؟
+   حدد: نوع المحتوى (خطوات / مقارنة / شرح / قرار / خطة)
+   وأي تفاصيل تجعل الإجابة مفيدة فعلاً.
+
+5. DIALECT: ما لهجة هذا الشخص؟
+   اختر واحدة فقط: gulf_saudi | gulf_other | egyptian | levantine | msa
+
+6. SUFFICIENT: هل الطلب مفهوم بما يكفي لتوليد برومبت مفيد؟
+   true = نعم | false = الطلب غامض جداً ولا يمكن المساعدة
+
+أجب بـ JSON فقط. بدون أي نص خارج الـ JSON.
+
+{
+  "persona": "...",
+  "context": "...",
+  "task": "...",
+  "format": "...",
+  "dialect": "...",
+  "sufficient": true
+}
+
+الكلام:
+${JSON.stringify(transcript)}`;
+
+  const result = await callLLM(prompt, { path: 'DEEP_PATH', jsonMode: true, maxTokens: 600 });
+  return extractJson(result.text);
+}
+
+async function step2_generate(pctf) {
+  const prompt = `أنت متخصص في كتابة برومبتات احترافية باللغة العربية.
+
+مهمتك: اكتب برومبت واحد متكامل يستطيع المستخدم نسخه ولصقه في ChatGPT أو Claude
+ليحصل على إجابة احترافية تشبع تساؤلاته بالكامل.
+
+المعلومات المتاحة:
+- الخبرة المطلوبة: ${pctf.persona}
+- وضع المستخدم: ${pctf.context}
+- ما يريد تحقيقه: ${pctf.task}
+- شكل الإجابة المثالية: ${pctf.format}
+- اللهجة: ${pctf.dialect}
+
+قواعد الكتابة:
+1. اكتب بنفس لهجة المستخدم تماماً
+2. ابدأ بتحديد الشخصية المطلوبة من الـ AI
+3. أعطِ السياق الكافي حتى يفهم الـ AI الوضع كاملاً
+4. اطلب المهمة بوضوح ودقة
+5. حدد شكل الإجابة المطلوبة بتفصيل (عدد النقاط، الترتيب، الأسلوب)
+6. الطول: 8 إلى 12 جملة
+7. ممنوع استخدام: "تحليل شامل"، "إطار متكامل"، "منهجية"، "استراتيجية شاملة"
+8. يجب أن يبدو البرومبت كأن إنساناً ذكياً كتبه، وليس نظاماً آلياً
+9. أجب بالبرومبت فقط — بدون أي مقدمة أو شرح
+
+المعيار الوحيد للنجاح:
+هل المستخدم سيقرأ هذا البرومبت ويقول "هذا بالضبط اللي أبيه أقوله"؟`;
+
+  const result = await callLLM(prompt, { path: 'DEEP_PATH', jsonMode: false, maxTokens: 1000 });
+  return result.text;
+}
+
+function validatePrompt(text) {
+  const banned = [
+    'تحليل شامل', 'إطار متكامل', 'منهجية',
+    'استراتيجية شاملة', 'JTBD', 'cognitive',
+    'Human-aware', 'Job executor'
+  ];
+
+  const hasBanned = banned.some((word) => text.includes(word));
+  const tooShort = text.length < 200;
+  const tooLong = text.length > 1500;
+
+  return {
+    valid: !hasBanned && !tooShort && !tooLong,
+    reason: hasBanned ? 'banned_phrase' : tooShort ? 'too_short' : tooLong ? 'too_long' : null
+  };
+}
+
+async function generatePrompt(transcript) {
+  const pctf = await step1_understand(transcript);
+
+  if (!pctf.sufficient) {
+    return {
+      status: 'NEED_MORE_DETAILS',
+      transcript_cleaned: transcript,
+      intent: {},
+      understanding_summary_ar: '',
+      final_prompt: '',
+      display_prompt: '',
+      message_ar: 'ممكن تضيف تفاصيل أكثر؟ مثلاً: وش بالضبط تبي تعرف؟',
+      helper_ar: 'كلما أضفت تفاصيل، كلما طلعت النتيجة أدق وأفيد.'
+    };
+  }
+
+  const display_prompt = await step2_generate(pctf);
+
+  const validation = validatePrompt(display_prompt);
+  if (!validation.valid) {
+    console.warn('[generatePrompt] validation warning:', validation.reason);
+  }
+
+  return {
+    status: 'SUFFICIENT',
+    transcript_cleaned: transcript,
+    intent: {
+      topic: pctf.persona,
+      user_goal: pctf.task,
+      task_type: pctf.format,
+      cognitive_mode: '',
+      audience: '',
+      desired_output: pctf.format,
+      missing_information: []
+    },
+    understanding_summary_ar: pctf.context,
+    final_prompt: display_prompt,
+    display_prompt: display_prompt
+  };
+}
+
+// ─── Existing system (preserved) ─────────────────────────────────────────────
+
 const TASK_TYPES = [
   'message_composer',
   'smart_planner',
@@ -142,7 +280,7 @@ const TASK_ROLE_MAP = {
 const MESSAGE_AR = 'احتاج تفاصيل أكثر عشان أرتب طلبك بشكل أفضل للذكاء الاصطناعي.';
 const HELPER_AR = 'أضف مثلًا: ما الموضوع؟ ماذا تريد؟ ولمن النتيجة؟';
 
-function preclassifyTranscript(transcript) {
+function _DEPRECATED_preclassifyTranscript(transcript) {
   const text = (transcript || '').trim();
   const normalized = text.toLowerCase();
   const vagueOnly = /^(أبغى|ابي|ساعدني|احتاج|شيء|موضوع|رتبها|سويها|ما ادري|ما أعرف)(\s+\S+){0,3}$/i.test(normalized);
@@ -203,7 +341,7 @@ function preclassifyTranscript(transcript) {
   };
 }
 
-function buildInterpretationPrompt(transcript, route = { path: 'DEEP_PATH' }) {
+function _DEPRECATED_buildInterpretationPrompt(transcript, route = { path: 'DEEP_PATH' }) {
   if (route.path === 'FAST_PATH') return buildFastInterpretationPrompt(transcript, route);
   return buildDeepInterpretationPrompt(transcript, route);
 }
@@ -870,7 +1008,7 @@ function selectTemplateId(templateId, taskType) {
   return TASK_TEMPLATE_MAP[taskType] || 'general_basic';
 }
 
-function assembleFinalPrompt(interpretation, options = {}) {
+function _DEPRECATED_assembleFinalPrompt(interpretation, options = {}) {
   if (options.path === 'FAST_PATH' || !interpretation.needs_deep_reasoning) {
     return assembleFastFinalPrompt(interpretation);
   }
@@ -1115,7 +1253,7 @@ function shouldUseInsight(interpretation = {}) {
   return false;
 }
 
-function toApiResponse(interpretation, finalPrompt, options = {}) {
+function _DEPRECATED_toApiResponse(interpretation, finalPrompt, options = {}) {
   if (interpretation.status === 'NEED_MORE_DETAILS') {
     return {
       status: 'NEED_MORE_DETAILS',
@@ -1281,16 +1419,17 @@ module.exports = {
   REASONING_STRATEGIES,
   TEMPLATE_IDS,
   OUTPUT_TEMPLATES,
-  preclassifyTranscript,
-  buildInterpretationPrompt,
+  _DEPRECATED_preclassifyTranscript,
+  _DEPRECATED_buildInterpretationPrompt,
   buildReflectionPrompt,
   buildRepairPrompt,
   buildInterpretationFallback,
   parseInterpretation,
   parseReflection,
   selectTemplateId,
-  assembleFinalPrompt,
+  _DEPRECATED_assembleFinalPrompt,
   ensureHumanAwareSection,
   shouldReflect,
-  toApiResponse
+  _DEPRECATED_toApiResponse,
+  generatePrompt
 };
