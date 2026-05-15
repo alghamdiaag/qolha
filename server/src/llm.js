@@ -96,7 +96,7 @@ function selectModelRoute(route = {}) {
       return {
         provider: 'gemini',
         model: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-        maxTokens: 1200
+        maxTokens: route.maxTokens || 1200
       };
     }
 
@@ -104,7 +104,7 @@ function selectModelRoute(route = {}) {
       return {
         provider: 'openai',
         model: process.env.OPENAI_FAST_MODEL || 'gpt-4.1-mini',
-        maxTokens: 1200
+        maxTokens: route.maxTokens || 1200
       };
     }
   }
@@ -112,7 +112,7 @@ function selectModelRoute(route = {}) {
   return {
     provider: 'anthropic',
     model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-5',
-    maxTokens: route.purpose === 'reflection' ? 900 : route.path === 'FAST_PATH' ? 1200 : 1800
+    maxTokens: route.maxTokens || (route.purpose === 'reflection' ? 900 : route.path === 'FAST_PATH' ? 1200 : 1800)
   };
 }
 

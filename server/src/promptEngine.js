@@ -41,7 +41,7 @@ async function step1_understand(transcript) {
 الكلام:
 ${JSON.stringify(transcript)}`;
 
-  const result = await callLLM(prompt, { path: 'DEEP_PATH', jsonMode: true, maxTokens: 600 });
+  const result = await callLLM(prompt, { path: 'FAST_PATH', jsonMode: true, maxTokens: 600 });
   return extractJson(result.text);
 }
 
