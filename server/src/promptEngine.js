@@ -41,8 +41,29 @@ async function step1_understand(transcript) {
 الكلام:
 ${JSON.stringify(transcript)}`;
 
-  const result = await callLLM(prompt, { path: 'FAST_PATH', jsonMode: true, maxTokens: 600 });
-  return extractJson(result.text);
+  try {
+    const result = await callLLM(prompt, { path: 'FAST_PATH', jsonMode: true, maxTokens: 600 });
+    const pctf = extractJson(result.text);
+    if (!pctf || typeof pctf !== 'object') throw new Error('invalid_json');
+    return { ...pctf, sufficient: pctf.sufficient !== false };
+  } catch (err) {
+    console.warn('[step1_understand] failed, using fallback:', err.message);
+    try {
+      const result = await callLLM(prompt, { path: 'DEEP_PATH', jsonMode: true, maxTokens: 600 });
+      const pctf = extractJson(result.text);
+      return { ...pctf, sufficient: pctf.sufficient !== false };
+    } catch (err2) {
+      console.error('[step1_understand] both paths failed:', err2.message);
+      return {
+        persona: 'مساعد ذكي متخصص',
+        context: transcript,
+        task: transcript,
+        format: 'إجابة واضحة ومفيدة',
+        dialect: 'gulf_saudi',
+        sufficient: true
+      };
+    }
+  }
 }
 
 async function step2_generate(pctf) {
@@ -72,8 +93,13 @@ async function step2_generate(pctf) {
 المعيار الوحيد للنجاح:
 هل المستخدم سيقرأ هذا البرومبت ويقول "هذا بالضبط اللي أبيه أقوله"؟`;
 
-  const result = await callLLM(prompt, { path: 'DEEP_PATH', jsonMode: false, maxTokens: 1000 });
-  return result.text;
+  try {
+    const result = await callLLM(prompt, { path: 'DEEP_PATH', jsonMode: false, maxTokens: 1000 });
+    return result.text;
+  } catch (err) {
+    console.error('[step2_generate] failed:', err.message);
+    throw new Error('GENERATION_FAILED');
+  }
 }
 
 function validatePrompt(text) {
@@ -109,7 +135,23 @@ async function generatePrompt(transcript) {
     };
   }
 
-  const display_prompt = await step2_generate(pctf);
+  let display_prompt;
+  try {
+    display_prompt = await step2_generate(pctf);
+  } catch (err) {
+    if (err.message === 'GENERATION_FAILED') {
+      return {
+        status: 'ERROR',
+        display_prompt: '',
+        message_ar: 'حدث خطأ أثناء التوليد. حاول مرة أخرى.',
+        transcript_cleaned: transcript,
+        intent: {},
+        understanding_summary_ar: '',
+        final_prompt: ''
+      };
+    }
+    throw err;
+  }
 
   const validation = validatePrompt(display_prompt);
   if (!validation.valid) {
