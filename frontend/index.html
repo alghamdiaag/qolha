@@ -8,25 +8,91 @@
 </head>
 <body>
   <main class="page-shell">
+
     <section class="hero" aria-label="قلها">
       <p class="brand">قلها</p>
-      <h1>رتّب فكرتك للذكاء الاصطناعي</h1>
-      <p class="lede">اكتب بطريقتك… وسنحوّلها إلى طلب أوضح وأذكى.</p>
+      <h1>تكلم بطريقتك… وخلّ الذكاء الاصطناعي يفهمك</h1>
+      <p class="lede">قل ما تريد، وسنحوّله إلى طلب واضح وجاهز للاستخدام.</p>
     </section>
 
-    <section class="app-card" aria-label="تجهيز الطلب">
-      <form id="processForm">
-        <label for="transcript">طلبك</label>
-        <textarea id="transcript" placeholder="مثال: أبغى أبدأ مشروع تقني لكن ما أعرف من وين أبدأ…" required></textarea>
-        <p class="field-note">اكتب كما تتكلم عادة.</p>
-        <button type="submit" id="submitButton">
-          <span class="button-spinner" aria-hidden="true"></span>
-          <span class="button-text">جهّز الطلب</span>
-        </button>
-      </form>
+    <section class="app-card" aria-label="إدخال الطلب">
+
+      <!-- Idle: large mic button + switch-to-type -->
+      <div id="idleView">
+        <div class="mic-center">
+          <button id="micButton" type="button" class="mic-button" aria-label="اضغط للتحدث">
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="8" y1="22" x2="16" y2="22"/>
+            </svg>
+            <span class="mic-label">تحدث</span>
+          </button>
+        </div>
+        <p class="mic-hint">اضغط وتحدث، ثم راجع النص قبل توليد النتيجة</p>
+        <button id="typeToggle" type="button" class="link-btn">أو اكتب طلبك</button>
+      </div>
+
+      <!-- Recording: pulsing mic + live transcript -->
+      <div id="recordingView" hidden>
+        <div class="mic-center">
+          <button id="stopMicButton" type="button" class="mic-button is-recording"
+                  aria-label="اضغط لإيقاف التسجيل">
+            <span class="mic-pulse-ring" aria-hidden="true"></span>
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
+              <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+              <line x1="12" y1="19" x2="12" y2="22"/>
+              <line x1="8" y1="22" x2="16" y2="22"/>
+            </svg>
+            <span class="mic-label">جاري الاستماع...</span>
+          </button>
+        </div>
+        <p id="interimDisplay" class="interim-text" aria-live="polite"></p>
+      </div>
+
+      <!-- Review: confirm/edit recognized text -->
+      <div id="reviewView" hidden>
+        <h2 class="review-title">هل هذا ما تقصده؟</h2>
+        <p class="field-note">راجع النص وعدّله إذا احتجت، ثم ولّد النتيجة.</p>
+        <textarea id="reviewTranscript" aria-label="النص المُعرَّف — راجعه وعدّله"></textarea>
+        <div class="action-stack">
+          <button id="generateButton" type="button">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span class="button-text">توليد النتيجة</span>
+          </button>
+          <button id="retryButton" type="button" class="secondary-btn">تحدث مرة أخرى</button>
+        </div>
+      </div>
+
+      <!-- Manual typing -->
+      <div id="manualView" hidden>
+        <p id="unsupportedNotice" class="notice-text" hidden>
+          ميزة الصوت غير مدعومة في هذا المتصفح حالياً. جرّب Google Chrome أو اكتب طلبك مباشرة.
+        </p>
+        <form id="manualForm">
+          <label for="manualTranscript">طلبك</label>
+          <textarea id="manualTranscript"
+                    placeholder="مثال: أبغى أبدأ مشروع قهوة بميزانية عشرين ألف ريال…"></textarea>
+          <p class="field-note">اكتب كما تتكلم عادة.</p>
+          <button type="submit" id="manualGenerateButton">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span class="button-text">توليد النتيجة</span>
+          </button>
+        </form>
+        <button id="backToMicButton" type="button" class="link-btn back-link">رجوع</button>
+      </div>
+
     </section>
+
+    <!-- Screen-reader announcements for voice state changes -->
+    <span id="voiceStatus" class="sr-only" aria-live="assertive" aria-atomic="true"></span>
 
     <section id="result" class="result-card" aria-live="polite" hidden></section>
+
   </main>
 
   <script src="app.js"></script>
