@@ -299,6 +299,36 @@ button.is-loading .button-spinner {
   transform: none;
 }
 
+/* ─── Type toggle (secondary CTA) ───────────────────────────────────────── */
+
+#typeToggle {
+  display: inline-flex;
+  width: 100%;
+  min-height: 52px;
+  background: rgba(255, 255, 255, 0.05);
+  color: #f8fafc;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 16px;
+  font-size: 0.95rem;
+  font-weight: 700;
+  padding: 14px 18px;
+  margin: 10px 0 0;
+  box-shadow: none;
+}
+
+#typeToggle:hover {
+  background: rgba(34, 211, 238, 0.08);
+  border-color: rgba(34, 211, 238, 0.35);
+  color: var(--primary);
+  transform: none;
+  box-shadow: none;
+}
+
+#typeToggle:active {
+  background: rgba(34, 211, 238, 0.12);
+  transform: none;
+}
+
 /* ─── Mic button ─────────────────────────────────────────────────────────── */
 
 .mic-center {
