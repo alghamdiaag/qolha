@@ -888,43 +888,72 @@ function assembleDisplayPrompt(interpretation) {
 
   const templateId = selectTemplateId(interpretation.output_template_id, interpretation.task_type);
   const template = formatTemplate(templateId);
+  const taskType = interpretation.task_type;
 
-  const contextBullets = [];
+  const emotionalState = interpretation.emotional_state || '';
+  const isEmotional =
+    !!emotionalState &&
+    emotionalState !== 'Not strongly expressed' &&
+    emotionalState !== 'غير واضح';
 
-  if (
+  const isDecisionType = taskType === 'comparison' || taskType === 'decision_advisor';
+
+  const audienceLine =
     interpretation.audience &&
     interpretation.audience !== 'عام' &&
     interpretation.audience.trim()
-  ) {
-    contextBullets.push(`الجمهور أو المستفيد: ${interpretation.audience}`);
+      ? interpretation.audience
+      : null;
+
+  const parts = [];
+
+  parts.push(buildDisplayOpener(taskType, goal, isEmotional));
+
+  if (audienceLine) {
+    parts.push(audienceLine);
   }
 
-  if (Array.isArray(interpretation.obstacles) && interpretation.obstacles.length) {
-    interpretation.obstacles.slice(0, 2).forEach((obstacle) => contextBullets.push(obstacle));
-  }
-
-  const emotionalState = interpretation.emotional_state || '';
-  if (emotionalState && emotionalState !== 'Not strongly expressed' && emotionalState !== 'غير واضح') {
-    contextBullets.push(`الحالة: ${emotionalState}`);
-  }
-
-  const parts = [`أريد منك مساعدتي في التالي:\n\n${goal}`];
-
-  if (contextBullets.length) {
-    parts.push(`السياق:\n${contextBullets.map((b) => `- ${b}`).join('\n')}`);
-  }
-
-  if (interpretation.desired_output && interpretation.desired_output.trim()) {
-    parts.push(`المطلوب:\n${interpretation.desired_output}`);
+  if (isDecisionType) {
+    parts.push(
+      isEmotional
+        ? 'ما الأشياء العملية التي يجب أن آخذها بعين الاعتبار قبل أن أحسم هذا القرار؟'
+        : 'ما الأشياء التي يجب أن أقيسها قبل أن أختار؟ وما الاتجاه الأقرب منطقيًا؟'
+    );
+  } else if (interpretation.desired_output && interpretation.desired_output.trim()) {
+    parts.push(interpretation.desired_output);
   }
 
   parts.push(
-    'أجب باللغة العربية فقط.\nاستخدم لغة بسيطة وواضحة.\nإذا كانت بعض المعلومات ناقصة، افترض افتراضات معقولة ثم اطرح أهم سؤالين في النهاية.'
+    isEmotional
+      ? 'أجب بالعربية. استخدم لغة هادئة وعملية. إذا احتجت معلومات إضافية، اطرح سؤالين مهمين في النهاية.'
+      : 'أجب بالعربية. إذا كانت بعض التفاصيل غير واضحة، افترض ما يبدو منطقيًا واطرح أهم سؤالين في النهاية.'
   );
 
-  parts.push(`اتبع هذا الهيكل:\n${template}`);
+  parts.push(`يفضل أن تكون الإجابة مرتبة بهذا الشكل:\n${template}`);
 
-  return parts.join('\n\n');
+  return parts.filter(Boolean).join('\n\n');
+}
+
+function buildDisplayOpener(taskType, goal, isEmotional) {
+  switch (taskType) {
+    case 'simplifier':
+    case 'explanation':
+      return `أريد أفهم:\n\n${goal}`;
+    case 'comparison':
+    case 'decision_advisor':
+      return isEmotional
+        ? `عندي قرار صعب أحتاج أفكر فيه:\n\n${goal}`
+        : `ساعدني أفكر بشكل عملي قبل أن أقرر:\n\n${goal}`;
+    case 'smart_planner':
+    case 'brainstorming':
+      return `${goal}\n\nأحتاج خطة عملية وخطوات واضحة.`;
+    case 'message_composer':
+      return `أريدك تساعدني أكتب:\n\n${goal}`;
+    case 'strategic_analysis':
+      return `أريد أفهم الصورة الأكبر:\n\n${goal}`;
+    default:
+      return `أحتاج مساعدتك في:\n\n${goal}`;
+  }
 }
 
 function assembleFastFinalPrompt(interpretation) {
