@@ -81,6 +81,7 @@ function moveToReview() {
     return;
   }
   setView(STATES.IDLE);
+  voiceStatus.textContent = 'جاري التحليل...';
   processRequest(trimmed, null, null);
 }
 
