@@ -878,6 +878,55 @@ function assembleFinalPrompt(interpretation, options = {}) {
   return assembleDeepFinalPrompt(interpretation);
 }
 
+function assembleDisplayPrompt(interpretation) {
+  const goal =
+    interpretation.explicit_goal ||
+    interpretation.implicit_goal ||
+    interpretation.topic ||
+    interpretation.normalized_expression ||
+    'مساعدة في طلب محدد';
+
+  const templateId = selectTemplateId(interpretation.output_template_id, interpretation.task_type);
+  const template = formatTemplate(templateId);
+
+  const contextBullets = [];
+
+  if (
+    interpretation.audience &&
+    interpretation.audience !== 'عام' &&
+    interpretation.audience.trim()
+  ) {
+    contextBullets.push(`الجمهور أو المستفيد: ${interpretation.audience}`);
+  }
+
+  if (Array.isArray(interpretation.obstacles) && interpretation.obstacles.length) {
+    interpretation.obstacles.slice(0, 2).forEach((obstacle) => contextBullets.push(obstacle));
+  }
+
+  const emotionalState = interpretation.emotional_state || '';
+  if (emotionalState && emotionalState !== 'Not strongly expressed' && emotionalState !== 'غير واضح') {
+    contextBullets.push(`الحالة: ${emotionalState}`);
+  }
+
+  const parts = [`أريد منك مساعدتي في التالي:\n\n${goal}`];
+
+  if (contextBullets.length) {
+    parts.push(`السياق:\n${contextBullets.map((b) => `- ${b}`).join('\n')}`);
+  }
+
+  if (interpretation.desired_output && interpretation.desired_output.trim()) {
+    parts.push(`المطلوب:\n${interpretation.desired_output}`);
+  }
+
+  parts.push(
+    'أجب باللغة العربية فقط.\nاستخدم لغة بسيطة وواضحة.\nإذا كانت بعض المعلومات ناقصة، افترض افتراضات معقولة ثم اطرح أهم سؤالين في النهاية.'
+  );
+
+  parts.push(`اتبع هذا الهيكل:\n${template}`);
+
+  return parts.join('\n\n');
+}
+
 function assembleFastFinalPrompt(interpretation) {
   const templateId = selectTemplateId(interpretation.output_template_id, interpretation.task_type);
   const role = TASK_ROLE_MAP[interpretation.task_type] || TASK_ROLE_MAP.general_help;
@@ -1053,6 +1102,7 @@ function toApiResponse(interpretation, finalPrompt, options = {}) {
       },
       understanding_summary_ar: buildUnderstandingSummary(interpretation),
       final_prompt: '',
+      display_prompt: '',
       message_ar: MESSAGE_AR,
       helper_ar: HELPER_AR
     };
@@ -1074,7 +1124,8 @@ function toApiResponse(interpretation, finalPrompt, options = {}) {
     final_prompt:
       options.path === 'FAST_PATH'
         ? ensureRequiredFinalPromptRules(finalPrompt)
-        : ensureRequiredFinalPromptRules(ensureInternalGuidanceSections(finalPrompt, interpretation))
+        : ensureRequiredFinalPromptRules(ensureInternalGuidanceSections(finalPrompt, interpretation)),
+    display_prompt: assembleDisplayPrompt(interpretation)
   };
 }
 

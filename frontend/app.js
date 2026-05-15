@@ -304,7 +304,7 @@ function renderResult(data) {
 
   promptTextarea = document.createElement('textarea');
   promptTextarea.className = 'prompt-output';
-  promptTextarea.value = data.final_prompt || '';
+  promptTextarea.value = data.display_prompt || data.final_prompt || '';
   promptTextarea.setAttribute('aria-label', 'الطلب الجاهز');
   promptTextarea.spellcheck = false;
 
