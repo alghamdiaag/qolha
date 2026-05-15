@@ -97,8 +97,16 @@ function initVoice() {
   recognition = new SR();
   recognition.lang = 'ar-SA';
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
+  const hasLimitedSupport = isIOS && isSafari;
   recognition.continuous = !isIOS;
   recognition.interimResults = true;
+
+  if (hasLimitedSupport) {
+    unsupportedNotice.textContent = 'للحصول على أفضل تجربة على iPhone، استخدم زر الكتابة أو افتح التطبيق من Chrome';
+    unsupportedNotice.hidden = false;
+    setView(STATES.TYPING);
+  }
 
   recognition.onstart = () => {
     recognitionActive = true;
