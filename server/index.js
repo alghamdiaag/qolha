@@ -17,10 +17,30 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'"],
-        styleSrc: ["'self'"],
-        imgSrc: ["'self'", 'data:'],
-        connectSrc: ["'self'"],
+        scriptSrc: [
+          "'self'",
+          "https://www.googletagmanager.com",
+          "https://www.google-analytics.com"
+        ],
+        styleSrc: [
+          "'self'",
+          "https://fonts.googleapis.com"
+        ],
+        fontSrc: [
+          "'self'",
+          "https://fonts.gstatic.com"
+        ],
+        imgSrc: [
+          "'self'",
+          "data:",
+          "https://www.google-analytics.com",
+          "https://www.googletagmanager.com"
+        ],
+        connectSrc: [
+          "'self'",
+          "https://www.google-analytics.com",
+          "https://region1.google-analytics.com"
+        ],
         objectSrc: ["'none'"],
         baseUri: ["'self'"],
         formAction: ["'self'"]
