@@ -80,6 +80,7 @@ function moveToReview() {
     setView(STATES.IDLE);
     return;
   }
+  setView(STATES.IDLE);
   processRequest(trimmed, null, null);
 }
 
