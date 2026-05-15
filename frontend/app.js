@@ -96,7 +96,8 @@ function initVoice() {
   voiceSupported = true;
   recognition = new SR();
   recognition.lang = 'ar-SA';
-  recognition.continuous = true;
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+  recognition.continuous = !isIOS;
   recognition.interimResults = true;
 
   recognition.onstart = () => {
@@ -138,6 +139,11 @@ function initVoice() {
   recognition.onerror = (e) => {
     recognitionActive = false;
     clearSilenceTimer();
+    if (e.error === 'not-supported') {
+      recognition.continuous = false;
+      try { recognition.start(); } catch (_) {}
+      return;
+    }
     if (e.error === 'aborted') return;
     if (appState !== STATES.RECORDING) return;
     setView(STATES.IDLE);
