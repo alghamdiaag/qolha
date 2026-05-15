@@ -242,9 +242,11 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
 
     const data = await response.json();
     stopThinking();
+    setView(STATES.IDLE);
     renderResult(data);
   } catch (err) {
     stopThinking();
+    setView(STATES.IDLE);
     if (err.name === 'AbortError') {
       showError('استغرق وقتاً طويلاً', 'الطلب أخذ وقتاً أكثر من المتوقع. حاول مرة أخرى.');
     } else if (!navigator.onLine) {
