@@ -11,7 +11,7 @@ let thinkingTimer = null;
 let thinkingIndex = 0;
 let silenceTimer = null;
 let userStoppedRecording = false;
-const SILENCE_GRACE_MS = 2500;
+const SILENCE_GRACE_MS = 4500;
 const THINKING_MESSAGES = [
   'نرتب طلبك...',
   'نحدد ما تحتاجه بالضبط...',
