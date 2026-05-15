@@ -9,6 +9,9 @@ let finalTranscript = '';
 let promptTextarea = null;
 let thinkingTimer = null;
 let thinkingIndex = 0;
+let silenceTimer = null;
+let userStoppedRecording = false;
+const SILENCE_GRACE_MS = 2500;
 const THINKING_MESSAGES = [
   'نرتب طلبك...',
   'نحدد ما تحتاجه بالضبط...',
@@ -55,6 +58,47 @@ function setView(state) {
 
 // ─── Voice ────────────────────────────────────────────────────────────────────
 
+function clearSilenceTimer() {
+  if (silenceTimer) {
+    window.clearTimeout(silenceTimer);
+    silenceTimer = null;
+  }
+}
+
+function scheduleSilenceTransition() {
+  clearSilenceTimer();
+  silenceTimer = window.setTimeout(() => {
+    silenceTimer = null;
+    if (appState !== STATES.RECORDING) return;
+    if (recognitionActive) {
+      // onend will fire next and call moveToReview (silenceTimer is null by then)
+      recognition.stop();
+    } else {
+      moveToReview();
+    }
+  }, SILENCE_GRACE_MS);
+}
+
+function moveToReview() {
+  clearSilenceTimer();
+  const text = finalTranscript.trim();
+  if (!text) {
+    setView(STATES.IDLE);
+    voiceStatus.textContent = 'لم يُلتقط كلام';
+    showMessage('لم ألتقط كلامًا واضحًا. حاول مرة أخرى أو اكتب طلبك.');
+    return;
+  }
+  const summary = buildUnderstandingSummary(text);
+  summaryTopic.textContent    = summary.topic;
+  summaryGoal.textContent     = summary.goal;
+  summaryHelpType.textContent = summary.helpType;
+  reviewTranscript.value = text;
+  resizeTextarea(reviewTranscript);
+  voiceStatus.textContent = 'انتهى التسجيل — راجع النص';
+  setView(STATES.REVIEWING);
+  reviewTranscript.focus();
+}
+
 function initVoice() {
   const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
   if (!SR) {
@@ -85,31 +129,31 @@ function initVoice() {
       }
     }
     interimDisplay.textContent = finalTranscript + interim;
+    // Speech received — reset the silence grace window
+    scheduleSilenceTransition();
   };
 
   recognition.onend = () => {
     recognitionActive = false;
     if (appState !== STATES.RECORDING) return;
-    const text = finalTranscript.trim();
-    if (!text) {
-      setView(STATES.IDLE);
-      voiceStatus.textContent = 'لم يُلتقط كلام';
-      showMessage('لم ألتقط كلامًا واضحًا. حاول مرة أخرى أو اكتب طلبك.');
+
+    if (!userStoppedRecording && silenceTimer !== null) {
+      // Still within the grace period — restart to keep listening
+      try {
+        recognition.start();
+      } catch (_) {
+        // If restart fails, let the existing timer expire naturally
+      }
       return;
     }
-    const summary = buildUnderstandingSummary(text);
-    summaryTopic.textContent    = summary.topic;
-    summaryGoal.textContent     = summary.goal;
-    summaryHelpType.textContent = summary.helpType;
-    reviewTranscript.value = text;
-    resizeTextarea(reviewTranscript);
-    voiceStatus.textContent = 'انتهى التسجيل — راجع النص';
-    setView(STATES.REVIEWING);
-    reviewTranscript.focus();
+
+    // Grace period elapsed or user explicitly stopped — commit the transcript
+    moveToReview();
   };
 
   recognition.onerror = (e) => {
     recognitionActive = false;
+    clearSilenceTimer();
     if (e.error === 'aborted') return;
     if (appState !== STATES.RECORDING) return;
     setView(STATES.IDLE);
@@ -126,6 +170,8 @@ function initVoice() {
 function startRecording() {
   if (!voiceSupported || !recognition || recognitionActive) return;
   finalTranscript = '';
+  userStoppedRecording = false;
+  clearSilenceTimer();
   interimDisplay.textContent = '';
   voiceStatus.textContent = 'جاري الاستماع...';
   setView(STATES.RECORDING);
@@ -141,7 +187,11 @@ function startRecording() {
 
 micButton.addEventListener('click', startRecording);
 
-stopMicButton.addEventListener('click', () => recognition?.stop());
+stopMicButton.addEventListener('click', () => {
+  userStoppedRecording = true;
+  clearSilenceTimer();
+  recognition?.stop();
+});
 
 typeToggle.addEventListener('click', () => {
   setView(STATES.TYPING);
