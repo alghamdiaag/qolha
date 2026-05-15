@@ -6,6 +6,7 @@ let recognition = null;
 let voiceSupported = false;
 let recognitionActive = false;
 let finalTranscript = '';
+let sessionTranscript = '';
 let promptTextarea = null;
 let thinkingTimer = null;
 let thinkingIndex = 0;
@@ -113,15 +114,16 @@ function initVoice() {
   };
 
   recognition.onresult = (e) => {
+    sessionTranscript = '';
     let interim = '';
-    for (let i = e.resultIndex; i < e.results.length; i++) {
+    for (let i = 0; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        finalTranscript += e.results[i][0].transcript;
+        sessionTranscript += e.results[i][0].transcript;
       } else {
         interim += e.results[i][0].transcript;
       }
     }
-    interimDisplay.textContent = finalTranscript + interim;
+    interimDisplay.textContent = finalTranscript + sessionTranscript + interim;
     // Speech received — reset the silence grace window
     scheduleSilenceTransition();
   };
@@ -129,6 +131,9 @@ function initVoice() {
   recognition.onend = () => {
     recognitionActive = false;
     if (appState !== STATES.RECORDING) return;
+
+    finalTranscript += sessionTranscript;
+    sessionTranscript = '';
 
     if (!userStoppedRecording && silenceTimer !== null) {
       // Still within the grace period — restart to keep listening
@@ -168,6 +173,7 @@ function initVoice() {
 function startRecording() {
   if (!voiceSupported || !recognition || recognitionActive) return;
   finalTranscript = '';
+  sessionTranscript = '';
   userStoppedRecording = false;
   clearSilenceTimer();
   interimDisplay.textContent = '';
