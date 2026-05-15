@@ -6,7 +6,6 @@ let recognition = null;
 let voiceSupported = false;
 let recognitionActive = false;
 let finalTranscript = '';
-let sessionTranscript = '';
 let promptTextarea = null;
 let thinkingTimer = null;
 let thinkingIndex = 0;
@@ -97,10 +96,9 @@ function initVoice() {
   voiceSupported = true;
   recognition = new SR();
   recognition.lang = 'ar-SA';
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
   const isSafari = /^((?!chrome|android).)*safari/i.test(navigator.userAgent);
-  const hasLimitedSupport = isIOS && isSafari;
-  recognition.continuous = !isIOS;
+  const hasLimitedSupport = /iPad|iPhone|iPod/.test(navigator.userAgent) && isSafari;
+  recognition.continuous = false;
   recognition.interimResults = true;
 
   if (hasLimitedSupport) {
@@ -114,16 +112,15 @@ function initVoice() {
   };
 
   recognition.onresult = (e) => {
-    sessionTranscript = '';
     let interim = '';
-    for (let i = 0; i < e.results.length; i++) {
+    for (let i = e.resultIndex; i < e.results.length; i++) {
       if (e.results[i].isFinal) {
-        sessionTranscript += e.results[i][0].transcript;
+        finalTranscript += e.results[i][0].transcript;
       } else {
         interim += e.results[i][0].transcript;
       }
     }
-    interimDisplay.textContent = finalTranscript + sessionTranscript + interim;
+    interimDisplay.textContent = finalTranscript + interim;
     // Speech received — reset the silence grace window
     scheduleSilenceTransition();
   };
@@ -131,9 +128,6 @@ function initVoice() {
   recognition.onend = () => {
     recognitionActive = false;
     if (appState !== STATES.RECORDING) return;
-
-    finalTranscript += sessionTranscript;
-    sessionTranscript = '';
 
     if (!userStoppedRecording && silenceTimer !== null) {
       // Still within the grace period — restart to keep listening
@@ -173,7 +167,6 @@ function initVoice() {
 function startRecording() {
   if (!voiceSupported || !recognition || recognitionActive) return;
   finalTranscript = '';
-  sessionTranscript = '';
   userStoppedRecording = false;
   clearSilenceTimer();
   interimDisplay.textContent = '';
