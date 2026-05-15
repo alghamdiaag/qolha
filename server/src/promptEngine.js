@@ -154,6 +154,21 @@ function preclassifyTranscript(transcript) {
   const isStrategic = /استراتيجية|نمو|سوق|منافس|تموضع|مشروع|بزنس|شركة|استثمار/.test(normalized) &&
     /حلل|خطة|فرصة|مخاطر|قرار|محتار|ما أعرف|من وين/.test(normalized);
 
+  let decisionImpactScore = 0;
+  if (isDecision) {
+    // A: long-term consequence signals (+2)
+    if (/مستقبل|سنوات|طويل المدى|مصيري|التزام|مسار|عائلة|ابني|بنتي/.test(normalized)) decisionImpactScore += 2;
+    // B: financial weight signals (+2)
+    if (/ميزانية|رأس مال|تمويل|قرض|قسط|أقساط|استثمار|خسارة|ربح|دخل|تكلفة|غالي/.test(normalized)) decisionImpactScore += 2;
+    // C: career / education / life-path signals (+3 — strong enough to route alone)
+    if (/دراسة|أدرس|جامعة|تخصص|ابتعاث|وظيفة|استقالة|عمل|مهنة|هجرة|أهاجر|هاجر|إقامة|زواج|طلاق/.test(normalized)) decisionImpactScore += 3;
+    // D: business commitment signals (+2)
+    if (/مشروع|بزنس|شركة|تجارة|تجاري|متجر|مطعم|قهوة|سيارات/.test(normalized)) decisionImpactScore += 2;
+    // E: emotional uncertainty + commitment action verbs (+1)
+    if (/محتار|خايف|متردد|ضايع|ما أدري|قلق|متخوف|أبدأ|ابدأ|أشتري|اشتري|أستثمر/.test(normalized)) decisionImpactScore += 1;
+  }
+  const isHighImpactDecision = isDecision && decisionImpactScore >= 3;
+
   let task_category = 'general_help';
   if (isMessage) task_category = 'message_composer';
   else if (isSimpleExplanation) task_category = 'simplifier';
@@ -162,7 +177,7 @@ function preclassifyTranscript(transcript) {
   else if (/خطة|خطوات|ابدأ|أبدأ|من وين/.test(normalized)) task_category = 'smart_planner';
 
   const highAmbiguity = vagueOnly || /ما أعرف|محتار|ضايع|مو عارف|غير واضح/.test(normalized);
-  const complexity = isBroadProject || isStrategic
+  const complexity = isBroadProject || isStrategic || isHighImpactDecision
     ? 'high'
     : isDecision || highAmbiguity
       ? 'medium'
@@ -176,6 +191,7 @@ function preclassifyTranscript(transcript) {
     complexity === 'high' ||
     isBroadProject ||
     isStrategic ||
+    isHighImpactDecision ||
     (highAmbiguity && !isMessage && !isSimpleExplanation);
 
   return {
