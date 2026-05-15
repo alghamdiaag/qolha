@@ -18,7 +18,14 @@ jobs:
           key: ${{ secrets.DEPLOY_KEY }}
           script: |
             cd /var/www/qolha
-            git pull origin main
+            rm -f .github/workflows/deploy.yml
+            git fetch origin main
+            git reset --hard origin/main
             cd server
             npm ci
-            pm2 restart qolha --update-env
+            PM2=$(command -v pm2 || echo "/usr/local/bin/pm2")
+            if [ ! -x "$PM2" ]; then
+              npx pm2 restart qolha --update-env
+            else
+              "$PM2" restart qolha --update-env
+            fi
