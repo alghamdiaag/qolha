@@ -10,15 +10,24 @@
   <main class="page-shell">
 
     <section class="hero" aria-label="قلها">
-      <p class="brand">قلها</p>
-      <h1>تكلم بطريقتك… وخلّ الذكاء الاصطناعي يفهمك</h1>
-      <p class="lede">قل ما تريد، وسنحوّله إلى طلب واضح وجاهز للاستخدام.</p>
+      <p class="brand">قلها 🇸🇦</p>
+      <div class="badge">أسهل طريقة لاستخدام الذكاء الاصطناعي</div>
+      <h1>مو لازم تعرف كيف تكتب للذكاء الاصطناعي</h1>
+      <p class="lede">تحدث بطريقتك بشكل طبيعي، وسنساعدك نحول كلامك إلى طلب واضح ومفهوم.</p>
+      <p class="trust-line">بدون أوامر معقدة. وبدون خبرة تقنية.</p>
     </section>
 
     <section class="app-card" aria-label="إدخال الطلب">
 
       <!-- Idle: large mic button + switch-to-type -->
       <div id="idleView">
+        <div class="steps-row" aria-hidden="true">
+          <span class="step">تحدث</span>
+          <span class="step-arrow">←</span>
+          <span class="step">راجع النص</span>
+          <span class="step-arrow">←</span>
+          <span class="step">انسخ النتيجة</span>
+        </div>
         <div class="mic-center">
           <button id="micButton" type="button" class="mic-button" aria-label="اضغط للتحدث">
             <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
@@ -28,10 +37,10 @@
               <line x1="12" y1="19" x2="12" y2="22"/>
               <line x1="8" y1="22" x2="16" y2="22"/>
             </svg>
-            <span class="mic-label">تحدث</span>
+            <span class="mic-label">ابدأ الكلام</span>
           </button>
         </div>
-        <p class="mic-hint">اضغط وتحدث، ثم راجع النص قبل توليد النتيجة</p>
+        <p class="mic-hint">مثال: اكتب رسالة، لخّص ملف، ساعدني أختار، أو اشرح لي موضوع</p>
         <button id="typeToggle" type="button" class="link-btn">أو اكتب طلبك</button>
       </div>
 
@@ -41,6 +50,7 @@
           <button id="stopMicButton" type="button" class="mic-button is-recording"
                   aria-label="اضغط لإيقاف التسجيل">
             <span class="mic-pulse-ring" aria-hidden="true"></span>
+            <span class="mic-pulse-ring mic-pulse-ring--2" aria-hidden="true"></span>
             <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor"
                  stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
               <path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3z"/>
@@ -107,6 +117,11 @@
     <span id="voiceStatus" class="sr-only" aria-live="assertive" aria-atomic="true"></span>
 
     <section id="result" class="result-card" aria-live="polite" hidden></section>
+
+    <footer class="site-footer">
+      <p>صممه وطوره علي الغامدي 🇸🇦</p>
+      <a href="mailto:ali@thelens.work" class="footer-email">ali@thelens.work</a>
+    </footer>
 
   </main>
 
