@@ -952,13 +952,8 @@ Progress understanding:
 Cognitive instruction:
 The user's primary cognitive need is ${interpretation.cognitive_need}.
 Behavioral guidance: ${getCognitiveNeedInstruction(interpretation.cognitive_need)}
-Use these reasoning strategies: ${strategies}.
-Guidance approach: ${reasoningInstruction}
-Guidance depth: ${router.depth}. Match the depth to the user's need; do not make the answer more complex than necessary.
+Use ${strategies}. Approach: ${reasoningInstruction} Depth: ${router.depth}.
 Insight guidance: ${insightInstruction}
-Focus on the user's real objective, not only the literal wording.
-Reduce uncertainty and make the next steps clear.
-Adapt the tone and guidance style to the human-aware understanding above. Be steady, practical, and emotionally intelligent without over-analyzing the user.
 
 Constraints:
 - Answer only in Arabic.
