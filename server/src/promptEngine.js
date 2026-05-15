@@ -282,7 +282,8 @@ Human state interpretation:
 - Keep the interpretation practical and only include signals that help the AI answer better.
 
 Progress interpretation:
-- Infer who is trying to make progress, what struggling moment caused the request, what progress they want, and what functional/emotional needs matter.
+- Infer who is trying to make progress, what circumstances are pushing them to act now, what desired outcome is pulling them forward, and what functional/emotional needs matter.
+- As hidden reasoning only: consider what external circumstance is forcing a decision, what desired state is attracting them, and what anxiety or inertia may be blocking them. Do NOT produce explicit "push" / "pull" / "anxiety" labels in the JSON — use these concepts only to sharpen the jtbd field values.
 - Keep this practical. Do not label the user or invent personal facts.
 
 Reasoning router:
@@ -298,10 +299,10 @@ Reasoning router:
 - General practical question => direct_answer or stepwise_planning.
 
 Insight layer:
-- Generate one practical perspective-shifting insight when it helps the user progress.
-- Ask internally: What assumption should be reframed? What is the user likely misunderstanding? What perspective shift would help?
-- Avoid motivational clichés, fake profundity, and over-philosophizing.
-- Keep the insight grounded in the user's situation.
+- Generate one grounded reframing insight only when it genuinely changes how the user sees the decision or problem.
+- Apply this internal test: "The real question is not X, but Y." Good reframing simplifies the decision, reveals a hidden trade-off, or exposes an assumption the user is treating as fixed.
+- Strong reframing sounds practical and intelligent — it does not sound motivational, philosophical, or like startup platitudes.
+- Weak reframing restates the obvious, offers generic encouragement, or applies to any situation. If no genuine insight emerges from this specific situation, leave the fields empty.
 
 Classification guidance:
 - Asking "where do I start", "how do I begin", "what are the steps" => smart_planner, structured_guidance, planner_basic.
@@ -372,7 +373,7 @@ ${JSON.stringify(transcript)}`;
 }
 
 function buildReflectionPrompt({ interpretation, selectedTemplateId, finalPrompt }) {
-  return `Improve this AI-ready prompt once if it is too generic or weak. Keep it practical and not unnecessarily long.
+  return `Improve this AI-ready prompt if it would produce a generic, symmetrical, or template-like answer. The goal is a response that feels like advice from a smart advisor: answer-first, decisive, and psychologically aware. Keep it practical and not unnecessarily long.
 
 Do not add hidden chain-of-thought requests.
 Do not use jailbreak language.
@@ -384,14 +385,14 @@ The final prompt must include:
 - Think carefully and provide a concise rationale when useful.
 
 Check:
-- Does it capture the user's underlying progress?
+- Does it lead with the most important insight or direction, rather than building toward it gradually?
+- Does it avoid treating all options as equally valid when one is clearly stronger for this situation?
+- Does it capture the user's underlying progress and causality (what is pushing them, pulling them, blocking them)?
 - Does it use the human_state practically without over-psychologizing?
-- Does it use the progress understanding and reasoning router without exposing internal labels?
-- Does it include one grounded reframing insight when appropriate, without generic encouragement?
+- Does it include one grounded reframing insight when appropriate — practical, not motivational?
 - Is the reasoning strategy appropriate?
 - Is the output structure suitable?
 - Will the answer likely be useful in Arabic?
-- Does it reduce uncertainty?
 
 CRITICAL: Return ONLY this JSON object. No markdown. No code fences. No text before or after.
 No trailing commas. No comments. Start with { and end with }.
@@ -512,7 +513,7 @@ function ensureInsightSection(prompt, interpretation) {
 - Reframe: ${insight.reframe || 'Keep the framing practical and grounded.'}
 - Perspective shift: ${insight.perspective_shift || 'Help the user see the situation more clearly.'}
 
-Use this insight only if it genuinely helps. If appropriate, include a short Arabic section titled "الفكرة الأهم" or "الزاوية التي قد تغيّر طريقة تفكيرك". Keep it practical and avoid generic encouragement.`;
+When a genuine reframe is available, open with a short Arabic section titled "الفكرة الأهم" — two or three sentences that change how the user sees the problem. It should make them think: "I hadn't thought of it that way." Do not use it for encouragement or general wisdom. Skip it entirely if no genuine reframe is available.`;
 
   if (prompt.includes('Output format:')) {
     return prompt.replace('Output format:', `${section}\n\nOutput format:`);
@@ -534,7 +535,7 @@ function ensureInsightTitleInstruction(prompt, interpretation) {
     return prompt;
   }
 
-  return `${prompt.trim()}\n\nIf appropriate, include a short Arabic section titled "الفكرة الأهم" near the beginning.`;
+  return `${prompt.trim()}\n\nIf a genuine reframe is available, open with a short Arabic section titled "الفكرة الأهم" — two or three sentences that change how the user sees the problem, not encourage them.`;
 }
 
 function ensureInternalGuidanceSections(prompt, interpretation) {
@@ -750,11 +751,11 @@ function normalizeInsightLayer(value, raw = {}) {
   if (raw.task_type === 'comparison' || raw.task_type === 'decision_advisor') {
     return {
       core_insight:
-        source.core_insight || 'القرار لا يتعلق بالخيار الأفضل مطلقًا بل بالخيار الأنسب لظروفك',
+        source.core_insight || 'السؤال الحقيقي ليس أيّهما أفضل بشكل عام، بل أيّهما يناسب وضعك وأولوياتك تحديدًا.',
       reframe:
-        source.reframe || 'الأرخص أو الأشهر ليس دائمًا الأقل تكلفة أو الأعلى قيمة على المدى الطويل',
+        source.reframe || 'حدّد أولًا المعيار الذي ستقيس به النجاح بعد سنة — ثم اختر بناءً عليه، لا العكس.',
       perspective_shift:
-        source.perspective_shift || 'ابدأ من نمط استخدامك وتحملك للمخاطر قبل مقارنة الخيارات'
+        source.perspective_shift || 'الخيار الصحيح في الغالب هو الذي تستطيع الالتزام به فعلًا في ظروفك الحالية، لا الذي يبدو أفضل نظريًا.'
     };
   }
 
@@ -895,14 +896,13 @@ Request:
 - Goal: ${interpretation.explicit_goal || interpretation.implicit_goal || 'Help the user move forward'}
 - Desired output: ${interpretation.desired_output || 'A practical Arabic answer'}
 
-Guidance:
+Behavioral guidance:
+${getCognitiveNeedInstruction(interpretation.cognitive_need)}
+
+Constraints:
 - Use ${strategies}.
-- Give a clear, practical answer.
-- Focus on the user's real objective, not only the literal wording.
 - If information is missing, make reasonable assumptions and ask the most important questions at the end.
-- Do not overwhelm the user.
-- Do not reveal hidden reasoning.
-- Think carefully and provide a concise rationale when useful.
+- Do not reveal internal reasoning labels or analysis.
 - Answer only in Arabic.
 
 Known missing information:
@@ -927,8 +927,8 @@ function assembleDeepFinalPrompt(interpretation) {
   const router = interpretation.reasoning_router || normalizeReasoningRouter();
   const reasoningInstruction = getReasoningModeInstruction(router.reasoning_mode);
   const insightInstruction = shouldUseInsight(interpretation)
-    ? 'When appropriate, introduce one useful reframing insight that changes how the user sees the situation, without making the answer long or abstract.'
-    : 'Do not force a reframing insight if the user mainly needs a direct practical answer.';
+    ? 'When a genuine reframe is available, open with a short Arabic section titled "الفكرة الأهم" — two or three sentences that change how the user sees the problem, not encourage them. It should make them think: "I hadn\'t thought of it that way." Skip this section entirely if no genuine reframe is available.'
+    : 'Skip reframing — the user needs a direct practical answer.';
 
   const prompt = `Role:
 You are a ${role}.
@@ -964,6 +964,7 @@ Progress understanding:
 - Functional need: ${jtbd.functional_need}
 - Emotional need: ${jtbd.emotional_need}
 - Decision uncertainty: ${jtbd.decision_uncertainty}
+Use this model to infer what is pushing the user to act now, what outcome is pulling them toward change, and what anxiety or inertia may be blocking them. Let these forces shape tone and sequencing invisibly — not as visible analysis.
 
 Cognitive instruction:
 The user's primary cognitive need is ${interpretation.cognitive_need}.
@@ -975,9 +976,7 @@ Constraints:
 - Answer only in Arabic.
 - Use simple Arabic suitable for a non-technical user.
 - If information is missing, make reasonable assumptions and ask the most important questions at the end.
-- Do not overwhelm the user.
-- Do not reveal hidden reasoning.
-- Think carefully and provide a concise rationale when useful.
+- Do not reveal internal reasoning labels, frameworks, or analysis.
 - Do not invent facts, dates, names, prices, deadlines, or personal details.
 
 Known missing information:
@@ -1118,52 +1117,56 @@ function renumberTemplate(template, startAt) {
 
 function getReasoningModeInstruction(mode) {
   const instructions = {
-    direct_answer: 'Give a direct, practical answer.',
-    stepwise_planning: 'Break the response into clear practical steps.',
-    tradeoff_analysis: 'Compare the trade-offs before recommending a direction.',
+    direct_answer:
+      'Lead with the answer. Then provide the shortest reasoning needed to make it credible.',
+    stepwise_planning:
+      'Begin with the first concrete action, then sequence the steps. Make each step specific enough to act on. Lead with progress, not context.',
+    tradeoff_analysis:
+      'State the recommended direction first. Then show the trade-offs that support it. Do not treat the comparison symmetrically when one option is clearly stronger for this situation.',
     multi_path_exploration:
-      'Explore a few possible directions, compare them briefly, then recommend the strongest starting point.',
-    simplification: 'Explain in simple terms suitable for a beginner.',
+      'Name two or three genuinely different paths briefly. For each, state the one condition that makes it the right choice. Then commit to a recommended starting point — do not leave the user choosing between equally presented options.',
+    simplification:
+      'Lead with the simplest true statement about the subject. Follow with one concrete analogy. Stop before it becomes complex again.',
     strategic_diagnosis:
-      'Diagnose the situation, identify assumptions, risks, and the best next move.',
+      'Diagnose the underlying situation before prescribing a direction. Identify the key assumption, the overlooked risk, and the strongest next move. Give a clear recommendation — the user needs a direction, not only a diagnosis.',
     communication_framing:
-      'Help the user communicate clearly, respectfully, and effectively.'
+      'Produce communication that is direct, appropriate for the relationship, and ready to use. Match tone to context precisely.'
   };
 
-  return instructions[mode] || instructions.direct_answer;
+  return instructions[mode] || 'Lead with your best practical answer. Support it with the minimum reasoning needed.';
 }
 
 function getCognitiveNeedInstruction(cognitiveNeed) {
   const instructions = {
     structured_guidance:
-      'The user needs structure. Provide a clear sequence, prioritize what to do first, and avoid leaving the response as broad advice.',
+      'Lead with the first concrete step — not context. Give a clear sequence where each step is specific enough to act on. Cut advice that does not immediately advance the user\'s progress.',
     uncertainty_reduction:
-      'The user is uncertain or overwhelmed. Lead with the clearest practical direction, reduce the number of options, explain trade-offs briefly, and end with one concrete next step.',
+      'State your best direction immediately — do not build toward it. Treat option overload as the problem: cut or defer everything except the clearest path. End with exactly one concrete next step. The user needs confidence, not a catalogue.',
     simplification:
-      'The user needs simplification. Use plain language, avoid jargon, explain one idea at a time, and use a simple example or analogy when useful.',
+      'Explain one idea at a time. Lead with a concrete everyday analogy before any abstraction. Never use jargon without an immediate plain-language replacement. Stop when the core idea is clear — resist adding layers.',
     prioritization:
-      'The user needs prioritization. Rank what matters most, explain why the first priority comes first, and cut or defer low-impact details.',
+      'Name the single most important thing first and explain why it comes before everything else. Actively cut or defer lower-priority items — do not present them as equally important. The user needs a clear first move, not a ranked list.',
     reassurance:
-      'The user needs reassurance before guidance. Briefly normalize the concern, use a calm tone, then provide practical direction without exaggeration.',
+      'Acknowledge the difficulty briefly and specifically — not generically. Then move directly into practical guidance. Keep emotional language minimal; avoid therapeutic tone. The goal is forward motion, not comfort alone.',
     comparison:
-      'The user needs comparison. Define practical decision criteria, compare the options against those criteria, and give a clear recommendation with conditions.',
+      'Define two or three practical decision criteria first, then compare the options against those criteria. Close with a clear recommendation that names when it applies. Do not end in a symmetrical draw — the comparison exists to support a direction.',
     decision_support:
-      'The user needs help making a decision. State the recommended direction clearly, explain when it is suitable, identify the main risk, and give the next decision step.',
+      'Name the strongest direction first — before the analysis. The comparison exists to support the recommendation, not replace it. Identify the one condition that would change your recommendation. Avoid presenting options as equally valid when the situation likely favors one.',
     communication_help:
-      'The user needs communication support. Produce wording that is ready to use, match the audience and tone, and offer a shorter or more formal version when useful.',
+      'Produce wording that is ready to use without editing. Match the audience and register precisely. Offer a concise variant only when it meaningfully changes the outcome. Do not pad with explanation — the user needs a usable message.',
     strategic_thinking:
-      'The user needs strategic thinking. Identify assumptions, risks, trade-offs, second-order implications, and the most defensible path forward.',
+      'Start by naming the assumption the user is making that is most likely wrong. Then surface the second-order consequence that matters most. Give a directional recommendation — a clear compass, not only a map. Surface what the user is not seeing, not just what they asked about.',
     clarification:
-      'The user needs clarification. Do not over-answer. Identify what is missing, ask the most important focused questions, and provide a minimal useful starting point.',
+      'Do not attempt to answer the full question. Identify the single most important unknown and ask it clearly. Provide only the minimal useful starting point that holds regardless of the answer.',
     organization:
-      'The user needs organization. Structure the existing information clearly, group related items, sequence them logically, and avoid adding unnecessary new ideas.',
+      'Structure what already exists — do not introduce new ideas. Group related items, sequence them logically, and label each group clearly. Your job is to order, not expand.',
     exploration:
-      'The user is exploring possibilities. Present a small number of viable paths, explain when each path fits, and help the user narrow the choice.'
+      'Present two or three meaningfully different paths — not variations of the same direction. For each, name the one condition that makes it the right choice. End with a recommended starting point and the reasoning behind it.'
   };
 
   return (
     instructions[cognitiveNeed] ||
-    'Address the user\'s practical need directly, clearly, and in a way that helps them move forward without unnecessary complexity.'
+    'Lead with your best practical answer. Support it with the minimum reasoning needed. Help the user move forward without unnecessary complexity.'
   );
 }
 
