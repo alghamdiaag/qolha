@@ -96,7 +96,7 @@ function initVoice() {
   voiceSupported = true;
   recognition = new SR();
   recognition.lang = 'ar-SA';
-  recognition.continuous = false;
+  recognition.continuous = true;
   recognition.interimResults = true;
 
   recognition.onstart = () => {
