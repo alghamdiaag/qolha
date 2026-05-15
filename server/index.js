@@ -83,7 +83,15 @@ app.post('/api/process', async (req, res) => {
   };
 
   try {
-    const result = await generatePrompt(transcript);
+    const timeoutPromise = new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('LLM_TIMEOUT')), 25000)
+    );
+
+    const result = await Promise.race([
+      generatePrompt(transcript),
+      timeoutPromise
+    ]);
+
     logData.status = result.status;
     logData.duration_ms = Date.now() - startedAt;
     console.log('[api/process]', JSON.stringify(logData));
@@ -92,6 +100,9 @@ app.post('/api/process', async (req, res) => {
     logData.duration_ms = Date.now() - startedAt;
     console.log('[api/process]', JSON.stringify(logData));
     console.error(error);
+    if (error.message === 'LLM_TIMEOUT') {
+      return res.status(504).json({ error: 'Request timed out' });
+    }
     res.status(500).json({ error: 'AI processing failed' });
   }
 });

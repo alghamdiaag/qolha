@@ -220,11 +220,17 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
   if (secondaryBtn) secondaryBtn.disabled = true;
 
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch('/api/process', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ transcript })
+      body: JSON.stringify({ transcript }),
+      signal: controller.signal
     });
+
+    clearTimeout(timeoutId);
 
     if (!response.ok) {
       let data = {};
@@ -235,9 +241,15 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
     const data = await response.json();
     stopThinking();
     renderResult(data);
-  } catch (_) {
+  } catch (err) {
     stopThinking();
-    showError('تعذر الاتصال', 'تأكد من اتصال الإنترنت أو حاول مرة أخرى بعد قليل.');
+    if (err.name === 'AbortError') {
+      showError('استغرق وقتاً طويلاً', 'الطلب أخذ وقتاً أكثر من المتوقع. حاول مرة أخرى.');
+    } else if (!navigator.onLine) {
+      showError('لا يوجد اتصال', 'تأكد من اتصالك بالإنترنت وحاول مرة أخرى.');
+    } else {
+      showError('حدث خطأ', 'لم نتمكن من معالجة طلبك. حاول مرة أخرى.');
+    }
   } finally {
     if (primaryBtn) primaryBtn.disabled = false;
     if (primaryBtn) primaryBtn.classList.remove('is-loading');
