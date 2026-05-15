@@ -485,3 +485,26 @@ button.is-loading .button-spinner {
     height: 32px;
   }
 }
+
+/* ─── Review step polish ─────────────────────────────────────────────────── */
+
+#reviewTranscript {
+  min-height: 100px;
+  max-height: 280px;
+  background: var(--focus);
+  border-color: rgba(14, 90, 80, 0.22);
+  resize: none;
+  font-size: 1.08rem;
+  line-height: 1.85;
+}
+
+#reviewTranscript:focus {
+  background: #ffffff;
+}
+
+.edit-hint {
+  margin: 8px 4px 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  text-align: center;
+}
