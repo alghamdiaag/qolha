@@ -33,13 +33,6 @@ const interimDisplay    = document.getElementById('interimDisplay');
 const voiceStatus       = document.getElementById('voiceStatus');
 const unsupportedNotice = document.getElementById('unsupportedNotice');
 
-const summaryTopic    = document.getElementById('summaryTopic');
-const summaryGoal     = document.getElementById('summaryGoal');
-const summaryHelpType = document.getElementById('summaryHelpType');
-
-const reviewTranscript  = document.getElementById('reviewTranscript');
-const generateButton    = document.getElementById('generateButton');
-const retryButton       = document.getElementById('retryButton');
 
 const manualForm            = document.getElementById('manualForm');
 const manualTranscript      = document.getElementById('manualTranscript');
@@ -81,22 +74,13 @@ function scheduleSilenceTransition() {
 
 function moveToReview() {
   clearSilenceTimer();
-  const text = finalTranscript.trim();
-  if (!text) {
+  const trimmed = finalTranscript.trim();
+  if (!trimmed) {
+    showMessage('لم ألتقط كلامًا واضحًا. حاول مرة أخرى.');
     setView(STATES.IDLE);
-    voiceStatus.textContent = 'لم يُلتقط كلام';
-    showMessage('لم ألتقط كلامًا واضحًا. حاول مرة أخرى أو اكتب طلبك.');
     return;
   }
-  const summary = buildUnderstandingSummary(text);
-  summaryTopic.textContent    = summary.topic;
-  summaryGoal.textContent     = summary.goal;
-  summaryHelpType.textContent = summary.helpType;
-  reviewTranscript.value = text;
-  resizeTextarea(reviewTranscript);
-  voiceStatus.textContent = 'انتهى التسجيل — راجع النص';
-  setView(STATES.REVIEWING);
-  reviewTranscript.focus();
+  processRequest(trimmed, null, null);
 }
 
 function initVoice() {
@@ -198,16 +182,6 @@ typeToggle.addEventListener('click', () => {
   manualTranscript.focus();
 });
 
-retryButton.addEventListener('click', () => {
-  reviewTranscript.value = '';
-  startRecording();
-});
-
-generateButton.addEventListener('click', () => {
-  const text = reviewTranscript.value.trim();
-  if (!text) { reviewTranscript.focus(); return; }
-  processRequest(text, generateButton, retryButton);
-});
 
 manualForm.addEventListener('submit', (e) => {
   e.preventDefault();
@@ -218,7 +192,6 @@ manualForm.addEventListener('submit', (e) => {
 
 backToMicButton.addEventListener('click', () => setView(STATES.IDLE));
 
-reviewTranscript.addEventListener('input', () => resizeTextarea(reviewTranscript));
 manualTranscript.addEventListener('input',  () => resizeTextarea(manualTranscript));
 
 // ─── API ──────────────────────────────────────────────────────────────────────
@@ -227,9 +200,9 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
   clearResult();
   startThinking();
 
-  primaryBtn.disabled = true;
-  primaryBtn.classList.add('is-loading');
-  const textEl = primaryBtn.querySelector('.button-text');
+  if (primaryBtn) primaryBtn.disabled = true;
+  if (primaryBtn) primaryBtn.classList.add('is-loading');
+  const textEl = primaryBtn ? primaryBtn.querySelector('.button-text') : null;
   if (textEl) textEl.textContent = 'جاري التوليد...';
   if (secondaryBtn) secondaryBtn.disabled = true;
 
@@ -253,8 +226,8 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
     stopThinking();
     showError('تعذر الاتصال', 'تأكد من اتصال الإنترنت أو حاول مرة أخرى بعد قليل.');
   } finally {
-    primaryBtn.disabled = false;
-    primaryBtn.classList.remove('is-loading');
+    if (primaryBtn) primaryBtn.disabled = false;
+    if (primaryBtn) primaryBtn.classList.remove('is-loading');
     if (textEl) textEl.textContent = 'توليد النتيجة';
     if (secondaryBtn) secondaryBtn.disabled = false;
   }
@@ -366,49 +339,6 @@ function createElement(tag, className, text) {
   return el;
 }
 
-// ─── Understanding summary ────────────────────────────────────────────────────
-
-function buildUnderstandingSummary(transcript) {
-  const t = transcript;
-  const FALLBACK = {
-    topic:    'طلب عام',
-    goal:     'توضيح الطلب وتحويله إلى نتيجة قابلة للاستخدام',
-    helpType: 'صياغة طلب واضح للذكاء الاصطناعي'
-  };
-
-  if (/رسالة|اكتب.*رسالة|كتابة/.test(t)) {
-    if (/إجازة/.test(t))   return { topic: 'رسالة طلب إجازة', goal: 'طلب إجازة بطريقة مناسبة',    helpType: 'صياغة رسالة جاهزة' };
-    if (/شكوى/.test(t))    return { topic: 'رسالة شكوى',       goal: 'تقديم شكوى باحترافية',       helpType: 'صياغة رسالة جاهزة' };
-    if (/استقالة/.test(t)) return { topic: 'رسالة استقالة',    goal: 'تقديم الاستقالة باحترافية',  helpType: 'صياغة رسالة جاهزة' };
-    return                        { topic: 'رسالة',             goal: 'صياغة رسالة مناسبة',         helpType: 'صياغة رسالة جاهزة' };
-  }
-
-  if (/محتار|أختار|اختار|بين .+ و|مقارنة/.test(t)) {
-    if (/سيارة/.test(t))      return { topic: 'مقارنة سيارات',        goal: 'اتخاذ قرار شراء مناسب',   helpType: 'مقارنة عملية واضحة' };
-    if (/تخصص|جامعة/.test(t)) return { topic: 'مقارنة خيارات دراسية', goal: 'اختيار المسار المناسب',   helpType: 'مقارنة عملية واضحة' };
-    return                           { topic: 'مقارنة خيارات',         goal: 'اتخاذ القرار المناسب',    helpType: 'مقارنة عملية واضحة' };
-  }
-
-  if (/مشروع/.test(t)) {
-    let topic = 'مشروع';
-    if      (/قهوة/.test(t))             topic = 'مشروع قهوة';
-    else if (/سيارة|سيارات/.test(t))     topic = 'مشروع سيارات';
-    else if (/تقني|تطبيق|برنامج/.test(t)) topic = 'مشروع تقني';
-    else if (/مطعم/.test(t))             topic = 'مشروع مطعم';
-    else { const m = t.match(/مشروع\s+(\S+)/); if (m) topic = `مشروع ${m[1]}`; }
-    const goal = /ميزانية|ريال|دولار/.test(t) ? 'بدء مشروع بميزانية محددة' : 'اختيار مسار واضح للبدء';
-    return { topic, goal, helpType: 'خطة عملية واضحة' };
-  }
-
-  if (/نوم|نومي/.test(t))              return { topic: 'تنظيم النوم',      goal: 'تحسين الروتين اليومي',          helpType: 'خطة خطوات عملية' };
-  if (/رياضة/.test(t))                 return { topic: 'نظام رياضي',        goal: 'بناء عادة رياضية منتظمة',       helpType: 'خطة خطوات عملية' };
-  if (/وزن|غذاء/.test(t))              return { topic: 'نظام صحي',          goal: 'تحسين الصحة والتغذية',          helpType: 'خطة خطوات عملية' };
-  if (/سيرة ذاتية/.test(t))            return { topic: 'سيرة ذاتية',        goal: 'تحسين فرص القبول الوظيفي',      helpType: 'صياغة احترافية جاهزة' };
-  if (/مقابلة.*عمل/.test(t))           return { topic: 'تحضير مقابلة عمل', goal: 'النجاح في مقابلة العمل',         helpType: 'تحضير وصياغة احترافية' };
-  if (/تعلم|دراسة|كورس|دورة/.test(t)) return { topic: 'خطة تعلم',          goal: 'اكتساب مهارة جديدة',            helpType: 'خطة تعلم منظمة' };
-
-  return FALLBACK;
-}
 
 // ─── Thinking status ──────────────────────────────────────────────────────────
 

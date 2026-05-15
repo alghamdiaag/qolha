@@ -64,34 +64,8 @@
         <p id="interimDisplay" class="interim-text" aria-live="polite"></p>
       </div>
 
-      <!-- Review: understanding card + confirm/edit recognized text -->
-      <div id="reviewView" hidden>
-        <p class="understanding-label">فهمنا أنك تريد:</p>
-        <div class="summary-rows">
-          <div class="summary-row">
-            <span class="summary-key">الموضوع</span>
-            <span id="summaryTopic" class="summary-val">—</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-key">الهدف</span>
-            <span id="summaryGoal" class="summary-val">—</span>
-          </div>
-          <div class="summary-row">
-            <span class="summary-key">نوع المساعدة</span>
-            <span id="summaryHelpType" class="summary-val">—</span>
-          </div>
-        </div>
-        <p class="field-note">النص الذي سمعناه:</p>
-        <textarea id="reviewTranscript" aria-label="النص المُعرَّف — راجعه وعدّله"></textarea>
-        <p class="edit-hint">يمكنك تعديل النص قبل الإرسال.</p>
-        <div class="action-stack">
-          <button id="generateButton" type="button">
-            <span class="button-spinner" aria-hidden="true"></span>
-            <span class="button-text">توليد النتيجة</span>
-          </button>
-          <button id="retryButton" type="button" class="secondary-btn">تحدث مرة أخرى</button>
-        </div>
-      </div>
+      <!-- Review: removed — recording goes directly to generation -->
+      <div id="reviewView" hidden></div>
 
       <!-- Manual typing -->
       <div id="manualView" hidden>
