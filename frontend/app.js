@@ -109,6 +109,7 @@ function initVoice() {
 
   recognition.onstart = () => {
     recognitionActive = true;
+    scheduleSilenceTransition();
   };
 
   recognition.onresult = (e) => {
