@@ -951,6 +951,7 @@ Progress understanding:
 
 Cognitive instruction:
 The user's primary cognitive need is ${interpretation.cognitive_need}.
+Behavioral guidance: ${getCognitiveNeedInstruction(interpretation.cognitive_need)}
 Use these reasoning strategies: ${strategies}.
 Guidance approach: ${reasoningInstruction}
 Guidance depth: ${router.depth}. Match the depth to the user's need; do not make the answer more complex than necessary.
@@ -1119,6 +1120,40 @@ function getReasoningModeInstruction(mode) {
   };
 
   return instructions[mode] || instructions.direct_answer;
+}
+
+function getCognitiveNeedInstruction(cognitiveNeed) {
+  const instructions = {
+    structured_guidance:
+      'The user needs structure. Provide a clear sequence, prioritize what to do first, and avoid leaving the response as broad advice.',
+    uncertainty_reduction:
+      'The user is uncertain or overwhelmed. Lead with the clearest practical direction, reduce the number of options, explain trade-offs briefly, and end with one concrete next step.',
+    simplification:
+      'The user needs simplification. Use plain language, avoid jargon, explain one idea at a time, and use a simple example or analogy when useful.',
+    prioritization:
+      'The user needs prioritization. Rank what matters most, explain why the first priority comes first, and cut or defer low-impact details.',
+    reassurance:
+      'The user needs reassurance before guidance. Briefly normalize the concern, use a calm tone, then provide practical direction without exaggeration.',
+    comparison:
+      'The user needs comparison. Define practical decision criteria, compare the options against those criteria, and give a clear recommendation with conditions.',
+    decision_support:
+      'The user needs help making a decision. State the recommended direction clearly, explain when it is suitable, identify the main risk, and give the next decision step.',
+    communication_help:
+      'The user needs communication support. Produce wording that is ready to use, match the audience and tone, and offer a shorter or more formal version when useful.',
+    strategic_thinking:
+      'The user needs strategic thinking. Identify assumptions, risks, trade-offs, second-order implications, and the most defensible path forward.',
+    clarification:
+      'The user needs clarification. Do not over-answer. Identify what is missing, ask the most important focused questions, and provide a minimal useful starting point.',
+    organization:
+      'The user needs organization. Structure the existing information clearly, group related items, sequence them logically, and avoid adding unnecessary new ideas.',
+    exploration:
+      'The user is exploring possibilities. Present a small number of viable paths, explain when each path fits, and help the user narrow the choice.'
+  };
+
+  return (
+    instructions[cognitiveNeed] ||
+    'Address the user\'s practical need directly, clearly, and in a way that helps them move forward without unnecessary complexity.'
+  );
 }
 
 function formatList(items, fallback) {
