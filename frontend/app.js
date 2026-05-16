@@ -224,7 +224,7 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 30000);
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
 
     const response = await fetch('/api/process', {
       method: 'POST',

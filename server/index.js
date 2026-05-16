@@ -19,6 +19,7 @@ app.use(
         defaultSrc: ["'self'"],
         scriptSrc: [
           "'self'",
+          "'unsafe-inline'",
           "https://www.googletagmanager.com",
           "https://www.google-analytics.com"
         ],
@@ -84,7 +85,7 @@ app.post('/api/process', async (req, res) => {
 
   try {
     const timeoutPromise = new Promise((_, reject) =>
-      setTimeout(() => reject(new Error('LLM_TIMEOUT')), 25000)
+      setTimeout(() => reject(new Error('LLM_TIMEOUT')), 55000)
     );
 
     const result = await Promise.race([
