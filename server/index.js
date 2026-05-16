@@ -98,12 +98,16 @@ app.post('/api/process', async (req, res) => {
     res.json(result);
   } catch (error) {
     logData.duration_ms = Date.now() - startedAt;
+    logData.error = error.message;
     console.log('[api/process]', JSON.stringify(logData));
     console.error(error);
     if (error.message === 'LLM_TIMEOUT') {
       return res.status(504).json({ error: 'Request timed out' });
     }
-    res.status(500).json({ error: 'AI processing failed' });
+    res.status(500).json({
+      error: 'AI processing failed',
+      detail: error.message
+    });
   }
 });
 
