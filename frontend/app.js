@@ -190,15 +190,20 @@ function startRecording() {
 
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
-micButton.addEventListener('click', startRecording);
+micButton.addEventListener('click', () => {
+  trackButtonClick('start_voice');
+  startRecording();
+});
 
 stopMicButton.addEventListener('click', () => {
+  trackButtonClick('stop_voice');
   userStoppedRecording = true;
   clearSilenceTimer();
   recognition?.stop();
 });
 
 typeToggle.addEventListener('click', () => {
+  trackButtonClick('switch_to_typing');
   setView(STATES.TYPING);
   manualTranscript.focus();
 });
@@ -208,10 +213,14 @@ manualForm.addEventListener('submit', (e) => {
   e.preventDefault();
   const text = manualTranscript.value.trim();
   if (!text) { manualTranscript.focus(); return; }
+  trackButtonClick('generate_from_text');
   processRequest(text, manualGenerateButton, null);
 });
 
-backToMicButton.addEventListener('click', () => setView(STATES.IDLE));
+backToMicButton.addEventListener('click', () => {
+  trackButtonClick('back_to_voice');
+  setView(STATES.IDLE);
+});
 
 manualTranscript.addEventListener('input',  () => resizeTextarea(manualTranscript));
 
@@ -348,11 +357,13 @@ async function copyPrompt() {
     promptTextarea.select();
     document.execCommand('copy');
   }
+  trackButtonClick('copy_prompt');
   showToast('تم النسخ');
   showHomeScreenTip();
 }
 
 async function handleHomeScreenAction(helpText, actionButton) {
+  trackButtonClick(installPromptEvent ? 'add_to_home_screen' : 'show_home_screen_instructions');
   dismissHomeScreenTipForever();
 
   if (installPromptEvent) {
@@ -402,6 +413,7 @@ function showHomeScreenTip() {
   );
 
   closeButton.addEventListener('click', () => {
+    trackButtonClick('dismiss_home_screen_tip');
     snoozeHomeScreenTip();
     tip.remove();
   });
@@ -481,6 +493,14 @@ function createElement(tag, className, text) {
   if (className) el.className = className;
   el.textContent = text;
   return el;
+}
+
+function trackButtonClick(buttonName, params = {}) {
+  if (typeof window.gtag !== 'function') return;
+  window.gtag('event', 'button_click', {
+    button_name: buttonName,
+    ...params
+  });
 }
 
 
