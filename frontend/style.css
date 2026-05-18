@@ -57,10 +57,24 @@ body {
 .brand {
   margin: 0 0 10px;
   color: var(--primary);
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  font-family: "IBM Plex Sans Arabic", "IBM Plex Sans", "Noto Sans Arabic", "Segoe UI", Tahoma, Arial, sans-serif;
   font-size: 1.05rem;
   font-weight: 800;
   letter-spacing: 0.01em;
   text-align: start;
+  max-width: 100%;
+}
+
+.brand-logo {
+  width: auto;
+  height: clamp(30px, 9vw, 34px);
+  max-width: 22vw;
+  object-fit: contain;
+  flex: 0 0 auto;
 }
 
 .badge {
