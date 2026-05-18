@@ -447,7 +447,7 @@ function createElement(tag, className, text) {
 function startThinking() {
   thinkingIndex = 0;
   result.hidden = false;
-  result.className = 'result-card message-card is-visible';
+  result.className = 'result-card message-card is-visible is-thinking';
 
   function tick() {
     const msg = THINKING_MESSAGES[thinkingIndex % THINKING_MESSAGES.length];
