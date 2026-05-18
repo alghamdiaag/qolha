@@ -61,6 +61,7 @@ app.use((req, res, next) => {
   return next();
 });
 
+app.use(express.static(path.join(__dirname, '../frontend/public')));
 app.use(express.static(path.join(__dirname, '../frontend')));
 
 app.get('/health', (req, res) => {
