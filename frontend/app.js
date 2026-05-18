@@ -11,6 +11,7 @@ let thinkingTimer = null;
 let thinkingIndex = 0;
 let silenceTimer = null;
 let userStoppedRecording = false;
+let installPromptEvent = null;
 const SILENCE_GRACE_MS = 4500;
 const THINKING_MESSAGES = [
   'نرتب طلبك...',
@@ -210,6 +211,11 @@ backToMicButton.addEventListener('click', () => setView(STATES.IDLE));
 
 manualTranscript.addEventListener('input',  () => resizeTextarea(manualTranscript));
 
+window.addEventListener('beforeinstallprompt', (event) => {
+  event.preventDefault();
+  installPromptEvent = event;
+});
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 async function processRequest(transcript, primaryBtn, secondaryBtn) {
@@ -339,6 +345,72 @@ async function copyPrompt() {
     document.execCommand('copy');
   }
   showToast('تم النسخ');
+  showHomeScreenTip();
+}
+
+async function handleHomeScreenAction(helpText, actionButton) {
+  if (installPromptEvent) {
+    installPromptEvent.prompt();
+    await installPromptEvent.userChoice;
+    installPromptEvent = null;
+    actionButton.hidden = true;
+    helpText.textContent = 'إذا لم تظهر لك نافذة الإضافة، افتح قائمة المتصفح واختر "إضافة إلى الشاشة الرئيسية".';
+    helpText.hidden = false;
+    return;
+  }
+
+  helpText.hidden = false;
+}
+
+function showHomeScreenTip() {
+  if (!result || result.querySelector('.home-screen-tip')) return;
+
+  const helpText = createElement('p', 'home-screen-help', getHomeScreenHelpText());
+  helpText.hidden = true;
+
+  const actionButton = document.createElement('button');
+  actionButton.type = 'button';
+  actionButton.className = 'home-screen-action';
+  actionButton.textContent = installPromptEvent ? 'إضافة للشاشة الرئيسية' : 'كيف أضيفها؟';
+  actionButton.addEventListener('click', () => handleHomeScreenAction(helpText, actionButton));
+
+  const closeButton = document.createElement('button');
+  closeButton.type = 'button';
+  closeButton.className = 'home-screen-dismiss';
+  closeButton.textContent = 'لاحقًا';
+
+  const actions = document.createElement('div');
+  actions.className = 'home-screen-actions';
+  actions.append(actionButton, closeButton);
+
+  const tip = document.createElement('aside');
+  tip.className = 'home-screen-tip';
+  tip.setAttribute('aria-label', 'إضافة الصفحة إلى الشاشة الرئيسية');
+  tip.append(
+    createElement('h3', null, 'خلّ الأداة قريبة منك'),
+    createElement('p', null, 'أضف هذه الصفحة إلى الشاشة الرئيسية وافتحها بسرعة متى احتجت تصيغ طلبك للذكاء الاصطناعي.'),
+    actions,
+    helpText
+  );
+
+  closeButton.addEventListener('click', () => tip.remove());
+  result.append(tip);
+}
+
+function getHomeScreenHelpText() {
+  const ua = navigator.userAgent || '';
+  const isIOS = /iPad|iPhone|iPod/.test(ua);
+  const isAndroid = /Android/.test(ua);
+
+  if (isIOS) {
+    return 'اضغط زر المشاركة في المتصفح، ثم اختر "إضافة إلى الشاشة الرئيسية".';
+  }
+
+  if (isAndroid) {
+    return 'افتح قائمة المتصفح ⋮، ثم اختر "إضافة إلى الشاشة الرئيسية".';
+  }
+
+  return 'افتح قائمة المتصفح، ثم اختر "إضافة إلى الشاشة الرئيسية" إذا كانت متاحة.';
 }
 
 // ─── Toast ────────────────────────────────────────────────────────────────────

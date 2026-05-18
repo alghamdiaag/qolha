@@ -500,6 +500,61 @@ button.is-loading .button-spinner {
   margin-top: 12px;
 }
 
+.home-screen-tip {
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.home-screen-tip h3 {
+  margin: 0 0 6px;
+  color: var(--text);
+  font-size: 0.98rem;
+  line-height: 1.45;
+}
+
+.home-screen-tip p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.85rem;
+  line-height: 1.7;
+}
+
+.home-screen-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.home-screen-action,
+.home-screen-dismiss {
+  width: auto;
+  min-height: 38px;
+  padding: 8px 12px;
+  border-radius: 999px;
+  font-size: 0.82rem;
+}
+
+.home-screen-dismiss {
+  background: transparent;
+  border-color: var(--border);
+  color: var(--muted);
+  box-shadow: none;
+}
+
+.home-screen-dismiss:hover {
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--text);
+  box-shadow: none;
+}
+
+.home-screen-help {
+  margin-top: 10px !important;
+}
+
 /* ─── Notices ────────────────────────────────────────────────────────────── */
 
 .notice-text {
