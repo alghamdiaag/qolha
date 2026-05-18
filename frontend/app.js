@@ -12,7 +12,11 @@ let thinkingIndex = 0;
 let silenceTimer = null;
 let userStoppedRecording = false;
 let installPromptEvent = null;
+let voiceUsedTrackedForRecording = false;
+let sessionDurationTracked = false;
+const SESSION_STARTED_AT = Date.now();
 const SILENCE_GRACE_MS = 4500;
+const VISIT_SEEN_KEY = 'qolha.analytics.hasVisited';
 const HOME_SCREEN_TIP_DISMISSED_KEY = 'qolha.homeScreenTip.dismissed';
 const HOME_SCREEN_TIP_SNOOZE_UNTIL_KEY = 'qolha.homeScreenTip.snoozeUntil';
 const HOME_SCREEN_TIP_SHOWN_SESSION_KEY = 'qolha.homeScreenTip.shownThisSession';
@@ -116,6 +120,10 @@ function initVoice() {
 
   recognition.onstart = () => {
     recognitionActive = true;
+    if (!voiceUsedTrackedForRecording) {
+      trackAnalyticsEvent('voice_used');
+      voiceUsedTrackedForRecording = true;
+    }
     scheduleSilenceTransition();
   };
 
@@ -176,6 +184,7 @@ function startRecording() {
   if (!voiceSupported || !recognition || recognitionActive) return;
   finalTranscript = '';
   userStoppedRecording = false;
+  voiceUsedTrackedForRecording = false;
   clearSilenceTimer();
   interimDisplay.textContent = '';
   voiceStatus.textContent = 'جاري الاستماع...';
@@ -229,11 +238,22 @@ window.addEventListener('beforeinstallprompt', (event) => {
   installPromptEvent = event;
 });
 
+window.addEventListener('appinstalled', () => {
+  trackAnalyticsEvent('pwa_installed', { install_source: 'browser' });
+  dismissHomeScreenTipForever();
+});
+
+window.addEventListener('pagehide', trackSessionDuration);
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'hidden') trackSessionDuration();
+});
+
 // ─── API ──────────────────────────────────────────────────────────────────────
 
 async function processRequest(transcript, primaryBtn, secondaryBtn) {
   clearResult();
   startThinking();
+  const inputMethod = primaryBtn === manualGenerateButton ? 'text' : 'voice';
 
   if (primaryBtn) primaryBtn.disabled = true;
   if (primaryBtn) primaryBtn.classList.add('is-loading');
@@ -263,6 +283,9 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
     const data = await response.json();
     stopThinking();
     setView(STATES.IDLE);
+    if (data.status === 'SUFFICIENT') {
+      trackAnalyticsEvent('prompt_generated', { input_method: inputMethod });
+    }
     renderResult(data);
   } catch (err) {
     stopThinking();
@@ -358,6 +381,7 @@ async function copyPrompt() {
     document.execCommand('copy');
   }
   trackButtonClick('copy_prompt');
+  trackAnalyticsEvent('prompt_copied');
   showToast('تم النسخ');
   showHomeScreenTip();
 }
@@ -368,7 +392,10 @@ async function handleHomeScreenAction(helpText, actionButton) {
 
   if (installPromptEvent) {
     installPromptEvent.prompt();
-    await installPromptEvent.userChoice;
+    const choice = await installPromptEvent.userChoice;
+    if (choice?.outcome === 'accepted') {
+      trackAnalyticsEvent('pwa_installed', { install_source: 'prompt' });
+    }
     installPromptEvent = null;
     actionButton.hidden = true;
     helpText.textContent = 'إذا لم تظهر لك نافذة الإضافة، افتح قائمة المتصفح واختر "إضافة إلى الشاشة الرئيسية".';
@@ -496,11 +523,34 @@ function createElement(tag, className, text) {
 }
 
 function trackButtonClick(buttonName, params = {}) {
-  if (typeof window.gtag !== 'function') return;
-  window.gtag('event', 'button_click', {
+  trackAnalyticsEvent('button_click', {
     button_name: buttonName,
     ...params
   });
+}
+
+function trackAnalyticsEvent(eventName, params = {}) {
+  if (typeof window.gtag !== 'function') return;
+  window.gtag('event', eventName, {
+    ...params
+  });
+}
+
+function trackVisitType() {
+  try {
+    const hasVisited = localStorage.getItem(VISIT_SEEN_KEY) === 'true';
+    trackAnalyticsEvent(hasVisited ? 'return_visit' : 'first_visit');
+    if (!hasVisited) localStorage.setItem(VISIT_SEEN_KEY, 'true');
+  } catch (_) {
+    trackAnalyticsEvent('first_visit');
+  }
+}
+
+function trackSessionDuration() {
+  if (sessionDurationTracked) return;
+  sessionDurationTracked = true;
+  const durationSeconds = Math.max(1, Math.round((Date.now() - SESSION_STARTED_AT) / 1000));
+  trackAnalyticsEvent('session_duration', { duration_seconds: durationSeconds });
 }
 
 
@@ -530,4 +580,5 @@ function stopThinking() {
 
 // ─── Init ─────────────────────────────────────────────────────────────────────
 
+trackVisitType();
 initVoice();

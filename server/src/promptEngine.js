@@ -5,7 +5,9 @@ const { callLLM } = require('./llm');
 async function step1_understand(transcript) {
   const prompt = `أنت نظام ذكي متخصص في فهم ما يريده الناس فعلاً من وراء كلامهم.
 
-المستخدم تكلم بالعربية. مهمتك:
+المستخدم قد يكتب بالعربية أو الإنجليزية أو يمزج بينهما داخل نفس الطلب. مهمتك:
+افهم المعنى من أي لغة مستخدمة، واحفظ الكلمات أو المصطلحات الإنجليزية المهمة كما هي داخل السياق عند الحاجة.
+لا تعتبر وجود الإنجليزية أو النص المختلط نقصاً في الطلب.
 
 1. PERSONA: ما هي الخبرة المتخصصة التي يحتاجها هذا الشخص؟
    استنتجها من موضوع الطلب تلقائياً.
@@ -22,13 +24,16 @@ async function step1_understand(transcript) {
    وأي تفاصيل تجعل الإجابة مفيدة فعلاً.
 
 5. DIALECT: ما لهجة هذا الشخص؟
-   اختر واحدة فقط: gulf_saudi | gulf_other | egyptian | levantine | msa
+   اختر واحدة فقط: gulf_saudi | gulf_other | egyptian | levantine | msa | english | mixed
 
 6. SUFFICIENT: هل الطلب مفهوم بما يكفي لتوليد برومبت مفيد؟
    القاعدة: كن متساهلاً جداً — الغالبية العظمى يجب أن تكون true.
 
    true (أمثلة — كلها يجب أن تكون true):
    - "أبي أفتح مطعم"
+   - "help me write a business plan"
+   - "اكتب لي email للمدير"
+   - "سو لي prompt عن market research"
    - "كيف أزيد دخلي"
    - "ساعدني في السيرة الذاتية"
    - "أبي أتعلم البرمجة"
@@ -85,6 +90,7 @@ async function step2_generate(pctf) {
 
 مهمتك: اكتب برومبت واحد متكامل يستطيع المستخدم نسخه ولصقه في ChatGPT أو Claude
 ليحصل على إجابة عميقة ومفصلة لا يمكن أن يحصل عليها لو سأل سؤاله مباشرة.
+قد تكون مدخلات المستخدم الأصلية عربية أو إنجليزية أو خليطاً بينهما. اكتب البرومبت النهائي بالعربية الواضحة، لكن أبقِ المصطلحات الإنجليزية المهمة كما هي إذا كان تعريبها يضعف المعنى، مثل: email, market research, pitch deck, API.
 
 المعلومات المتاحة:
 - الخبرة المطلوبة: ${pctf.persona}
@@ -128,6 +134,7 @@ async function step2_generate(pctf) {
 ═══════════════════════════════════════
 
 1. اكتب بنفس لهجة المستخدم تماماً
+   إذا كان الطلب بالإنجليزية أو مختلطاً، اكتب بالعربية البسيطة المناسبة للمستخدم العربي مع الحفاظ على المصطلحات الإنجليزية الضرورية كما هي.
 2. ابدأ بتحديد الشخصية المطلوبة من الـ AI بدقة عالية
    (ليس "خبير" — بل "خبير عاش هذه التجربة بنفسه")
 3. أعطِ السياق الكافي حتى يفهم الـ AI الوضع كاملاً
@@ -441,13 +448,13 @@ function _DEPRECATED_buildInterpretationPrompt(transcript, route = { path: 'DEEP
 }
 
 function buildFastInterpretationPrompt(transcript, route) {
-  return `You interpret Arabic user requests for "قلها".
+  return `You interpret Arabic, English, or mixed Arabic-English user requests for "قلها".
 
 CRITICAL OUTPUT RULES:
 - Return ONLY a valid JSON object. Nothing before { and nothing after }.
 - No markdown. No code fences. No explanation. No preamble.
 - No trailing commas. No JavaScript comments (// or /* */).
-- Arabic text only inside JSON string values. Enum values in English only.
+- JSON string values should be in Arabic when descriptive, but preserve important English terms from the user when needed. Enum values in English only.
 - The response must be directly parseable by JSON.parse().
 
 Return compact valid JSON. Arabic descriptive fields, English enum values.
@@ -458,6 +465,7 @@ ${JSON.stringify(route)}
 
 Rules:
 - NEED_MORE_DETAILS only if no clear topic or useful task exists.
+- English-only and mixed Arabic-English inputs are valid. Do not reject them because of language.
 - Keep interpretation practical and concise.
 - No invented facts.
 
@@ -498,9 +506,10 @@ Your job is to produce compact structured JSON that lets code deterministically 
 Pre-classification:
 ${JSON.stringify(route)}
 
-Interpret natural Arabic, including Saudi/Gulf dialect. Focus on the progress the user is trying to make, not only literal words.
+Interpret natural Arabic, English, or mixed Arabic-English input, including Saudi/Gulf dialect. Focus on the progress the user is trying to make, not only literal words.
 Do not be strict. Return NEED_MORE_DETAILS only if the input has no clear topic or no meaningful task.
 If the user provides enough direction to produce a useful first response, return SUFFICIENT.
+English-only and mixed Arabic-English inputs are valid. Preserve important English terms from the user when translating the interpretation into Arabic.
 Preserve uncertainty, emotional context, and obstacles when relevant.
 Do not invent facts, dates, names, reasons, budgets, or constraints.
 Avoid generic interpretation.
@@ -549,7 +558,7 @@ CRITICAL OUTPUT RULES:
 - No markdown. No code fences. No explanation. No preamble.
 - No trailing commas. No JavaScript comments (// or /* */).
 - The response must be directly parseable by JSON.parse().
-- All descriptive text values must be in Arabic. Enum values (status, task_type, cognitive_need, reasoning_strategy, output_template_id, reasoning_mode, depth, complexity) in English only.
+- Descriptive text values should be in Arabic, while preserving important English terms from the user when needed. Enum values (status, task_type, cognitive_need, reasoning_strategy, output_template_id, reasoning_mode, depth, complexity) in English only.
 
 Schema:
 {
@@ -1199,7 +1208,7 @@ function assembleFastFinalPrompt(interpretation) {
 You are a ${role}.
 
 User reality:
-The user is an Arabic-speaking non-technical person expressing the request naturally.
+The user is an Arabic-speaking non-technical person expressing the request naturally. The original request may include English words or be written fully in English.
 
 Request:
 - Topic: ${interpretation.topic || 'Not clearly specified'}
@@ -1214,6 +1223,7 @@ Constraints:
 - If information is missing, make reasonable assumptions and ask the most important questions at the end.
 - Do not reveal internal reasoning labels or analysis.
 - Answer only in Arabic.
+- Preserve important English terms exactly when translating them would reduce clarity.
 
 Known missing information:
 ${missing}
@@ -1244,7 +1254,7 @@ function assembleDeepFinalPrompt(interpretation) {
 You are a ${role}.
 
 User reality:
-The user is an Arabic-speaking non-technical person who expressed the request naturally, possibly in Saudi/Gulf Arabic.
+The user is an Arabic-speaking non-technical person who expressed the request naturally, possibly in Saudi/Gulf Arabic, English, or mixed Arabic-English.
 
 User expression:
 ${interpretation.normalized_expression || interpretation.topic}
@@ -1285,6 +1295,7 @@ Insight guidance: ${insightInstruction}
 Constraints:
 - Answer only in Arabic.
 - Use simple Arabic suitable for a non-technical user.
+- Preserve important English terms exactly when translating them would reduce clarity.
 - If information is missing, make reasonable assumptions and ask the most important questions at the end.
 - Do not reveal internal reasoning labels, frameworks, or analysis.
 - Do not invent facts, dates, names, prices, deadlines, or personal details.
