@@ -13,6 +13,10 @@ let silenceTimer = null;
 let userStoppedRecording = false;
 let installPromptEvent = null;
 const SILENCE_GRACE_MS = 4500;
+const HOME_SCREEN_TIP_DISMISSED_KEY = 'qolha.homeScreenTip.dismissed';
+const HOME_SCREEN_TIP_SNOOZE_UNTIL_KEY = 'qolha.homeScreenTip.snoozeUntil';
+const HOME_SCREEN_TIP_SHOWN_SESSION_KEY = 'qolha.homeScreenTip.shownThisSession';
+const HOME_SCREEN_TIP_SNOOZE_MS = 5 * 24 * 60 * 60 * 1000;
 const THINKING_MESSAGES = [
   'نرتب طلبك...',
   'نحدد ما تحتاجه بالضبط...',
@@ -349,6 +353,8 @@ async function copyPrompt() {
 }
 
 async function handleHomeScreenAction(helpText, actionButton) {
+  dismissHomeScreenTipForever();
+
   if (installPromptEvent) {
     installPromptEvent.prompt();
     await installPromptEvent.userChoice;
@@ -364,6 +370,8 @@ async function handleHomeScreenAction(helpText, actionButton) {
 
 function showHomeScreenTip() {
   if (!result || result.querySelector('.home-screen-tip')) return;
+  if (shouldHideHomeScreenTip()) return;
+  markHomeScreenTipShownThisSession();
 
   const helpText = createElement('p', 'home-screen-help', getHomeScreenHelpText());
   helpText.hidden = true;
@@ -393,8 +401,42 @@ function showHomeScreenTip() {
     helpText
   );
 
-  closeButton.addEventListener('click', () => tip.remove());
+  closeButton.addEventListener('click', () => {
+    snoozeHomeScreenTip();
+    tip.remove();
+  });
   result.append(tip);
+}
+
+function shouldHideHomeScreenTip() {
+  try {
+    if (window.matchMedia('(display-mode: standalone)').matches || navigator.standalone) return true;
+    if (sessionStorage.getItem(HOME_SCREEN_TIP_SHOWN_SESSION_KEY) === 'true') return true;
+    if (localStorage.getItem(HOME_SCREEN_TIP_DISMISSED_KEY) === 'true') return true;
+    const snoozeUntil = Number(localStorage.getItem(HOME_SCREEN_TIP_SNOOZE_UNTIL_KEY) || 0);
+    return Date.now() < snoozeUntil;
+  } catch (_) {
+    return false;
+  }
+}
+
+function markHomeScreenTipShownThisSession() {
+  try {
+    sessionStorage.setItem(HOME_SCREEN_TIP_SHOWN_SESSION_KEY, 'true');
+  } catch (_) {}
+}
+
+function dismissHomeScreenTipForever() {
+  try {
+    localStorage.setItem(HOME_SCREEN_TIP_DISMISSED_KEY, 'true');
+    localStorage.removeItem(HOME_SCREEN_TIP_SNOOZE_UNTIL_KEY);
+  } catch (_) {}
+}
+
+function snoozeHomeScreenTip() {
+  try {
+    localStorage.setItem(HOME_SCREEN_TIP_SNOOZE_UNTIL_KEY, String(Date.now() + HOME_SCREEN_TIP_SNOOZE_MS));
+  } catch (_) {}
 }
 
 function getHomeScreenHelpText() {
