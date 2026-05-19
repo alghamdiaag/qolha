@@ -200,7 +200,7 @@ function startRecording() {
 // ─── Event listeners ──────────────────────────────────────────────────────────
 
 micButton.addEventListener('click', () => {
-  trackButtonClick('start_voice');
+  trackVoiceClick();
   startRecording();
 });
 
@@ -212,7 +212,7 @@ stopMicButton.addEventListener('click', () => {
 });
 
 typeToggle.addEventListener('click', () => {
-  trackButtonClick('switch_to_typing');
+  trackTextClick();
   setView(STATES.TYPING);
   manualTranscript.focus();
 });
@@ -239,7 +239,7 @@ window.addEventListener('beforeinstallprompt', (event) => {
 });
 
 window.addEventListener('appinstalled', () => {
-  trackAnalyticsEvent('pwa_installed', { install_source: 'browser' });
+  trackPwaInstalled('browser');
   dismissHomeScreenTipForever();
 });
 
@@ -284,7 +284,7 @@ async function processRequest(transcript, primaryBtn, secondaryBtn) {
     stopThinking();
     setView(STATES.IDLE);
     if (data.status === 'SUFFICIENT') {
-      trackAnalyticsEvent('prompt_generated', { input_method: inputMethod });
+      trackPromptGenerated(inputMethod);
     }
     renderResult(data);
   } catch (err) {
@@ -380,21 +380,20 @@ async function copyPrompt() {
     promptTextarea.select();
     document.execCommand('copy');
   }
-  trackButtonClick('copy_prompt');
-  trackAnalyticsEvent('prompt_copied');
+  trackPromptCopied();
   showToast('تم النسخ');
   showHomeScreenTip();
 }
 
 async function handleHomeScreenAction(helpText, actionButton) {
-  trackButtonClick(installPromptEvent ? 'add_to_home_screen' : 'show_home_screen_instructions');
+  trackPwaInstallClicked(installPromptEvent ? 'prompt' : 'instructions');
   dismissHomeScreenTipForever();
 
   if (installPromptEvent) {
     installPromptEvent.prompt();
     const choice = await installPromptEvent.userChoice;
     if (choice?.outcome === 'accepted') {
-      trackAnalyticsEvent('pwa_installed', { install_source: 'prompt' });
+      trackPwaInstalled('prompt');
     }
     installPromptEvent = null;
     actionButton.hidden = true;
@@ -529,6 +528,54 @@ function trackButtonClick(buttonName, params = {}) {
   });
 }
 
+function trackVoiceClick() {
+  trackButtonClick('start_voice');
+  trackAnalyticsEvent('voice_button_click', {
+    source: 'homepage',
+    action_type: 'start_voice'
+  });
+}
+
+function trackTextClick() {
+  trackButtonClick('switch_to_typing');
+  trackAnalyticsEvent('text_button_click', {
+    source: 'homepage',
+    action_type: 'switch_to_typing'
+  });
+}
+
+function trackPromptGenerated(inputMethod) {
+  trackAnalyticsEvent('prompt_generated', {
+    input_type: inputMethod,
+    language: 'ar',
+    source: 'homepage'
+  });
+}
+
+function trackPromptCopied() {
+  trackButtonClick('copy_prompt');
+  trackAnalyticsEvent('prompt_copied', {
+    prompt_length: promptTextarea?.value?.length || 0,
+    source: 'homepage'
+  });
+}
+
+function trackShareClicked(source = 'homepage') {
+  trackAnalyticsEvent('share_clicked', { source });
+}
+
+function trackPwaInstallClicked(source) {
+  trackButtonClick(source === 'prompt' ? 'add_to_home_screen' : 'show_home_screen_instructions');
+  trackAnalyticsEvent('pwa_install_clicked', {
+    source,
+    action_type: source === 'prompt' ? 'install_prompt' : 'show_instructions'
+  });
+}
+
+function trackPwaInstalled(installSource) {
+  trackAnalyticsEvent('pwa_installed', { install_source: installSource });
+}
+
 function trackAnalyticsEvent(eventName, params = {}) {
   if (typeof window.gtag !== 'function') return;
   window.gtag('event', eventName, {
@@ -552,6 +599,22 @@ function trackSessionDuration() {
   const durationSeconds = Math.max(1, Math.round((Date.now() - SESSION_STARTED_AT) / 1000));
   trackAnalyticsEvent('session_duration', { duration_seconds: durationSeconds });
 }
+
+window.qolhaAnalytics = {
+  trackEvent: trackAnalyticsEvent,
+  trackVoiceClick,
+  trackTextClick,
+  trackPromptGenerated,
+  trackPromptCopied,
+  trackShareClicked,
+  trackPwaInstallClicked,
+  trackPwaInstalled
+};
+
+// Temporary manual GA4 smoke test hook. Safe to remove after analytics verification.
+window.testGA4Event = () => trackAnalyticsEvent('test_event_from_console', {
+  source: 'manual_console_test'
+});
 
 
 // ─── Thinking status ──────────────────────────────────────────────────────────
